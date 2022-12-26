@@ -6,7 +6,7 @@
 2. set your username and pwd
 3. install the stuff in `raspberry_install.sh`
 4. clone this repo in the home folder
-5. modify `/etc/rc.local` and add `sh /home/<username>/textual_clock/start.sh`
+5. modify `/etc/rc.local` and add `sudo sh /home/<username>/textual_clock/start.sh`
 6. setup the scheduled reboot:
    1. execute `sudo crontab -e`
    2. (select your editor if this is the first time. I advise to use nano)
