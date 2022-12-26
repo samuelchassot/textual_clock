@@ -19,6 +19,8 @@ def slow_on(led_n,target_tuple):
         pixels[led_n] = (r, g, b)
         time.sleep(0.01)
 
+print("Start of the clock")
+
 pixels.fill(off)
 
 while True:
