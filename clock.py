@@ -8,6 +8,7 @@ pixels = neopixel.NeoPixel(board.D18, n_leds)
 
 color_warm_white = (255, 140, 100)
 color_red = (255, 0, 0)
+color_blue = (0, 0, 255)
 off = (0, 0, 0)
 
 
@@ -27,9 +28,9 @@ pixels.fill(off)
 
 while True:
 
-    slow_on(0, color_red)
-    slow_on(1, color_red)
-    slow_on(2, color_red)
+    slow_on(0, color_blue)
+    slow_on(1, color_blue)
+    slow_on(2, color_blue)
     time.sleep(2)
     pixels.fill(off)
     time.sleep(0.5)
