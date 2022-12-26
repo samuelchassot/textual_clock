@@ -28,8 +28,8 @@ pixels.fill(off)
 
 while True:
 
-    slow_on(0, color_red)
-    slow_on(1, color_red)
+    slow_on(0, color_blue)
+    slow_on(1, color_blue)
     slow_on(2, color_blue)
     time.sleep(2)
     pixels.fill(off)
