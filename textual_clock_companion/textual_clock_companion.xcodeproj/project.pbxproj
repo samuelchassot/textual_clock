@@ -18,6 +18,7 @@
 		7EF15E612993C24A0062B54F /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF15E602993C2490062B54F /* MainView.swift */; };
 		7EF15E642993C6E60062B54F /* ClockSettingsUtility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF15E632993C6E60062B54F /* ClockSettingsUtility.swift */; };
 		7EF15E682993E94A0062B54F /* HttpClockApiUtility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF15E672993E94A0062B54F /* HttpClockApiUtility.swift */; };
+		7EF15E6A29992DC30062B54F /* LoaderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF15E6929992DC30062B54F /* LoaderButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		7EF15E632993C6E60062B54F /* ClockSettingsUtility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockSettingsUtility.swift; sourceTree = "<group>"; };
 		7EF15E662993E19B0062B54F /* textual-clock-companion-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "textual-clock-companion-Info.plist"; sourceTree = SOURCE_ROOT; };
 		7EF15E672993E94A0062B54F /* HttpClockApiUtility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpClockApiUtility.swift; sourceTree = "<group>"; };
+		7EF15E6929992DC30062B54F /* LoaderButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoaderButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +80,7 @@
 				7E73E8072993A1FC005AEFDA /* Persistence.swift */,
 				7E73E8092993A1FC005AEFDA /* textual_clock_companion.xcdatamodeld */,
 				7E73E8042993A1FC005AEFDA /* Preview Content */,
+				7EF15E6929992DC30062B54F /* LoaderButton.swift */,
 			);
 			path = textual_clock_companion;
 			sourceTree = "<group>";
@@ -178,6 +181,7 @@
 			files = (
 				7E73E8082993A1FC005AEFDA /* Persistence.swift in Sources */,
 				7EF15E612993C24A0062B54F /* MainView.swift in Sources */,
+				7EF15E6A29992DC30062B54F /* LoaderButton.swift in Sources */,
 				7EF15E682993E94A0062B54F /* HttpClockApiUtility.swift in Sources */,
 				7E73E80B2993A1FC005AEFDA /* textual_clock_companion.xcdatamodeld in Sources */,
 				7E73E8012993A1FA005AEFDA /* ContentView.swift in Sources */,

@@ -49,6 +49,7 @@ struct ClockSettingsUtility {
         let clockSettings = NSEntityDescription.insertNewObject(forEntityName: "ClockSettings", into: managedObjectContext) as! ClockSettings
         clockSettings.id = 0
         clockSettings.clock_name = newClockSettings.clock_name
+        clockSettings.clock_port = newClockSettings.clock_port
 
         
         var ok = true
@@ -61,6 +62,7 @@ struct ClockSettingsUtility {
             let newConfig = NSEntityDescription.insertNewObject(forEntityName: "ClockSettings", into: managedObjectContext) as! ClockSettings
             newConfig.id = 0
             newConfig.clock_name = oldConfig.clock_name
+            newConfig.clock_port = oldConfig.clock_port
             
             do{
                 try managedObjectContext.save()
@@ -81,6 +83,7 @@ struct ClockSettingsUtility {
         let clockSettings = NSEntityDescription.insertNewObject(forEntityName: "ClockSettings", into: managedObjectContext) as! ClockSettings
         clockSettings.id = 0
         clockSettings.clock_name = newClockSettingsDictStringAttributes[.clock_name]
+        clockSettings.clock_port = newClockSettingsDictStringAttributes[.clock_port]
         
         do{
             try managedObjectContext.save()
@@ -116,4 +119,5 @@ struct ClockSettingsUtility {
 
 enum ClockSettingsStringValues {
     case clock_name;
+    case clock_port;
 }

@@ -9,7 +9,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.managedObjectContext) var managedObjectContext
-    @State private var clock_name = "raspberry"
+    @State private var clock_address = ""
+    @State private var clock_port = ""
     @State private var showAlertSaved = false
     @ObservedObject var keyboard = KeyboardResponder()
     var body: some View {
@@ -19,10 +20,25 @@ struct SettingsView: View {
                 Form{
                     Section(header: Text("Settings")){
                         HStack{
-                            Text("Clock name")
+                            Text("Clock address")
                             Divider()
-                            TextField("Clock Name", text: self.$clock_name)
+                            TextField("Clock address", text: self.$clock_address)
                                 .submitLabel(.done)
+                                .keyboardType(.default)
+                                .disableAutocorrection(true)
+                                .autocapitalization(.none)
+                                .onSubmit {
+                                    self.endEditing()
+                                }
+                        }
+                        HStack{
+                            Text("Clock port")
+                            Divider()
+                            TextField("Clock port", text: self.$clock_port)
+                                .submitLabel(.done)
+                                .keyboardType(.numberPad)
+                                .disableAutocorrection(true)
+                                .autocapitalization(.none)
                                 .onSubmit {
                                     self.endEditing()
                                 }
@@ -41,7 +57,8 @@ struct SettingsView: View {
     
     private func loadSettings() {
         let clockSettings = ClockSettingsUtility.getClockSettings(managedObjectContext: self.managedObjectContext)!
-        self.clock_name = clockSettings.clock_name ?? ""
+        self.clock_address = clockSettings.clock_name ?? ""
+        self.clock_port = clockSettings.clock_port ?? ""
     }
     
     private func closeSettings() {
@@ -49,7 +66,8 @@ struct SettingsView: View {
     }
     private func saveSettings(){
         var stringDict = Dictionary<ClockSettingsStringValues, String>()
-        stringDict[.clock_name] = self.clock_name
+        stringDict[.clock_name] = self.clock_address
+        stringDict[.clock_port] = self.clock_port
         _ = ClockSettingsUtility.updateClockSettingsFromDicts(managedObjectContext: self.managedObjectContext, newClockSettingsDictStringAttributes: stringDict)
         self.loadSettings()
         self.showAlertSaved = true

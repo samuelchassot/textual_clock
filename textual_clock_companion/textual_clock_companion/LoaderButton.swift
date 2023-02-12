@@ -1,5 +1,5 @@
 //
-//  LoadingButton.swift
+//  LoaderButton.swift
 //  textual_clock_companion
 //
 //  Created by Samuel Chassot on 12.02.23.
@@ -20,7 +20,6 @@ class LoaderButton: UIButton {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        // 4
         setupView()
     }
     
@@ -30,14 +29,12 @@ class LoaderButton: UIButton {
     }
     
     func setupView() {
-        // 5
         spinner.hidesWhenStopped = true
         // to change spinner color
         spinner.color = .white
         // default style
         spinner.style = .medium
         
-        // 6
         // add as button subview
         addSubview(spinner)
         // set constraints to always in the middle of button

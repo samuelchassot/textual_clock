@@ -6,10 +6,19 @@
 //
 
 import Foundation
+import SwiftUI
+
 struct RgbColor: Encodable, Decodable {
-    let color_r: Double
-    let color_g: Double
-    let color_b: Double
+    let color_r: Int
+    let color_g: Int
+    let color_b: Int
+    static func toUIColor(rgbColor:RgbColor) -> Color {
+        return  Color(red: Double(rgbColor.color_r)/255.0, green: Double(rgbColor.color_g)/255.0, blue: Double(rgbColor.color_b)/255.0)
+    }
+    static func fromUIColor(uiColor:Color) -> RgbColor {
+        let arrRgb = UIColor(uiColor).cgColor.components!
+        return RgbColor(color_r: Int(arrRgb[0]*255.0), color_g: Int(arrRgb[1]*255), color_b: Int(arrRgb[2]*255))
+    }
 }
 
 struct LivenessMessage: Decodable {
@@ -25,10 +34,13 @@ struct HttpClockApiUtility {
             onError("Cannot encode the given payload!")
             return
         }
+        print(try? JSONDecoder().decode(RgbColor.self, from: payload!))
         let url = URL(string: "http://\(clockAddress)/color")!
         var urlRequest = URLRequest(url: url)
+        urlRequest.timeoutInterval = 3
         urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.httpMethod = "POST"
+        urlRequest.httpBody = payload
         sendRequest(request: urlRequest, onSuccess: {(data) in
             onSuccess("Color update successful!")
         }, onError: onError)
@@ -82,9 +94,9 @@ struct HttpClockApiUtility {
     
     private static func sendRequest(request:URLRequest, onSuccess: @escaping (Data) -> Void, onError: @escaping (String) -> Void){
         // Create the HTTP request
-        let session = URLSession.shared
+        let config = URLSessionConfiguration.ephemeral
+        let session = URLSession(configuration: config)
         let task = session.dataTask(with: request) { (data, response, error) in
-            
             if let error = error {
                 // Handle HTTP request error
                 onError(error.localizedDescription)
@@ -96,6 +108,7 @@ struct HttpClockApiUtility {
                 onError("Unexpected error occured.")
             }
         }
+        task.resume()
     }
     
 }
