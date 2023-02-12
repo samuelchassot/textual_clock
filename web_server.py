@@ -11,9 +11,10 @@ SEPARATOR = ";"
 DEFAULT_COLOR = (255, 255, 255)
 
 
-@app.route("/test", methods=["GET"])
-def test():
-    return "ok", 200
+@app.route("/liveness", methods=["GET"])
+def liveness():
+    liveness = {"liveness": True}
+    return jsonify(liveness), 200
 
 
 @app.route("/reboot", methods=["POST"])
