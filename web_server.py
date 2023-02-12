@@ -1,7 +1,12 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import os
 
 app = Flask(__name__)
+
+CURRENT_COLOR_FILE_PATH = "res/color.current"
+SEPARATOR = ";"
+DEFAULT_COLOR = (255, 255, 255)
+
 
 @app.route("/reboot", methods=["POST"])
 def restart():
@@ -9,18 +14,48 @@ def restart():
     os.system("sudo reboot")
     return "Rebooting..."
 
-@app.route("/color", methods=["GET", "POST"])
-def color():
-    if request.method == "GET":
-        r = random.randint(0, 255)
-        g = random.randint(0, 255)
-        b = random.randint(0, 255)
-        color = {"color_r": r, "color_g": g, "color_b": b}
-        return jsonify(color)
-    elif request.method == "POST":
-        color = request.get_json()
-        colors.append(color)
-        return "Color added", 201
+
+@app.route("/color", methods="GET")
+def color_get():
+    (r, g, b) = read_current_color()
+    color = {"color_r": r, "color_g": g, "color_b": b}
+    return jsonify(color), 200
+
+
+@app.route("/color", methods="POST")
+def color_post():
+    color = request.get_json()
+    if color == None:
+        return "ERROR", 400
+    color_tuple = (color["color_r"], color["color_g"], color["color_b"])
+    store_color(color_tuple)
+    return "Color stored", 200
+
+
+def store_color(color_tuple: tuple[int, int, int]) -> None:
+    with open(CURRENT_COLOR_FILE_PATH, "w") as f:
+        to_write = (
+            str(color_tuple[0])
+            + SEPARATOR
+            + str(color_tuple[1])
+            + SEPARATOR
+            + str(color_tuple[2])
+        )
+        print("Writing color: " + to_write)
+        f.write(to_write)
+        f.close()
+
+
+def read_current_color() -> tuple[int, int, int]:
+    with open(CURRENT_COLOR_FILE_PATH, "r") as f:
+        try:
+            l = f.readline()
+            print("Read color line: " + l)
+            rgb = l.split(SEPARATOR)
+            return (int(rgb[0]), int(rgb[1]), int(rgb[2]))
+        except:
+            print("ERROR: cannot read the current color!")
+            return DEFAULT_COLOR
 
 
 if __name__ == "__main__":
