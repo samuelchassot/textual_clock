@@ -28,6 +28,7 @@ def color_get():
 @app.route("/color", methods=["POST"])
 def color_post():
     color = request.get_json()
+    print("Received JSON color: ", color)
     if color == None:
         return "ERROR", 400
     color_tuple = (color["color_r"], color["color_g"], color["color_b"])
