@@ -11,6 +11,11 @@ SEPARATOR = ";"
 DEFAULT_COLOR = (255, 255, 255)
 
 
+@app.route("/test", methods=["GET"])
+def test():
+    return "ok", 200
+
+
 @app.route("/reboot", methods=["POST"])
 def restart():
     os.system("echo Rebooting the system...")
