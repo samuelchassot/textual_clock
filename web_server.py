@@ -51,7 +51,7 @@ def store_color(color_tuple: tuple[int, int, int]) -> None:
 
 def read_current_color() -> tuple[int, int, int]:
     try:
-        with open(CURRENT_COLOR_FILE_PATH, "ra") as f:
+        with open(CURRENT_COLOR_FILE_PATH, "r") as f:
             l = f.readline()
             print("Read color line: " + l)
             rgb = l.split(SEPARATOR)
