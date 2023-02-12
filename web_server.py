@@ -27,6 +27,7 @@ def color_get():
 
 @app.route("/color", methods=["POST"])
 def color_post():
+    print(request)
     color = request.get_json()
     print("Received JSON color: ", color)
     if color == None:
