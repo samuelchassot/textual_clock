@@ -3,6 +3,9 @@ import os
 
 app = Flask(__name__)
 
+HOST = "textualclock.local"
+PORT = 4242
+
 CURRENT_COLOR_FILE_PATH = "res/color.current"
 SEPARATOR = ";"
 DEFAULT_COLOR = (255, 255, 255)
@@ -59,4 +62,4 @@ def read_current_color() -> tuple[int, int, int]:
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host=HOST, port=PORT, debug=True)
