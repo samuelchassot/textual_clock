@@ -6,7 +6,7 @@ The branches `raspberry_xx` contain only the code for each raspberry. They are i
 
 ## Setup of the Raspberry
 
-1. Install Raspbian image, with Wi-Fi and ssh enabled, with as name `textual_clock`, so that it appears as such on the network.
+1. Install Raspbian image, with Wi-Fi and ssh enabled, with as name `textualclock`, so that it appears as such on the network.
 2. set your username and pwd
 3. install the stuff in `raspberry_install.sh`
 4. clone this repo in the home folder
