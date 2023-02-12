@@ -50,15 +50,15 @@ def store_color(color_tuple: tuple[int, int, int]) -> None:
 
 
 def read_current_color() -> tuple[int, int, int]:
-    with open(CURRENT_COLOR_FILE_PATH, "ra") as f:
-        try:
+    try:
+        with open(CURRENT_COLOR_FILE_PATH, "ra") as f:
             l = f.readline()
             print("Read color line: " + l)
             rgb = l.split(SEPARATOR)
             return (int(rgb[0]), int(rgb[1]), int(rgb[2]))
-        except:
-            print("ERROR: cannot read the current color!")
-            return DEFAULT_COLOR
+    except:
+        print("ERROR: cannot read the current color!")
+        return DEFAULT_COLOR
 
 
 if __name__ == "__main__":
