@@ -56,8 +56,8 @@ def read_current_color() -> tuple[int, int, int]:
             print("Read color line: " + l)
             rgb = l.split(SEPARATOR)
             return (int(rgb[0]), int(rgb[1]), int(rgb[2]))
-    except:
-        print("ERROR: cannot read the current color!")
+    except Exception as e:
+        print("ERROR: cannot read the current color!\n", e)
         return DEFAULT_COLOR
 
 
