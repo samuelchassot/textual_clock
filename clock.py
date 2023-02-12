@@ -61,6 +61,7 @@ def run():
         t_str += str(cinq_min)
         color = read_current_color()
         print(t_str, " in color = ", color)
+        time.sleep(10)
 
 
 def show_hour(h: int):
