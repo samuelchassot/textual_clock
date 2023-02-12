@@ -18,14 +18,14 @@ def restart():
     return "Rebooting..."
 
 
-@app.route("/color", methods="GET")
+@app.route("/color", methods=["GET"])
 def color_get():
     (r, g, b) = read_current_color()
     color = {"color_r": r, "color_g": g, "color_b": b}
     return jsonify(color), 200
 
 
-@app.route("/color", methods="POST")
+@app.route("/color", methods=["POST"])
 def color_post():
     color = request.get_json()
     if color == None:
