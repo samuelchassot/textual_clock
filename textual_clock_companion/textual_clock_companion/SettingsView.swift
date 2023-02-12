@@ -11,11 +11,11 @@ struct SettingsView: View {
     @Environment(\.managedObjectContext) var managedObjectContext
     @State private var clock_address = ""
     @State private var clock_port = ""
-    @State private var showAlertSaved = false
+    @State private var connectionTestState = ConnectionTestState.base
+    
     @ObservedObject var keyboard = KeyboardResponder()
     var body: some View {
         NavigationView{
-            
             VStack{
                 Form{
                     Section(header: Text("Settings")){
@@ -46,6 +46,45 @@ struct SettingsView: View {
                     }
                     
                 }
+                Spacer()
+                Button(action: self.testConnection){
+                    if(self.connectionTestState == .success){
+                        Image(systemName: "checkmark")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.green)
+                            .cornerRadius(15)
+                    } else if(self.connectionTestState == .failure){
+                        Image(systemName: "xmark")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.red)
+                            .cornerRadius(15)
+                    } else if (self.connectionTestState == .loading){
+                        Image(systemName: "arrow.2.circlepath")
+                            .resizable()
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 50, height: 50)
+                            .background(Color.accentColor)
+                            .cornerRadius(15)
+                            .rotationEffect(.degrees(360))
+                    }else{
+                        Text("Test connection")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.accentColor)
+                            .cornerRadius(15)
+                    }
+                }
+                Spacer()
             }.navigationBarTitle("Settings")
         }.onAppear{
             self.loadSettings()
@@ -55,22 +94,35 @@ struct SettingsView: View {
         }
     }
     
+    private func testConnection(){
+        self.connectionTestState = .loading
+        let clockAddress = self.clock_address + ":" + self.clock_port
+        HttpClockApiUtility.checkLiveness(clockAddress: clockAddress, onSuccess: {(msg) in
+            self.showTestState(temporary_state: .success)
+        }, onError: {(errorMsg) in
+            print("error")
+            self.showTestState(temporary_state: .failure)
+        })
+    }
+    
+    private func showTestState(temporary_state: ConnectionTestState){
+        self.connectionTestState = temporary_state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.connectionTestState = .base
+        }
+    }
     private func loadSettings() {
         let clockSettings = ClockSettingsUtility.getClockSettings(managedObjectContext: self.managedObjectContext)!
         self.clock_address = clockSettings.clock_name ?? ""
         self.clock_port = clockSettings.clock_port ?? ""
     }
     
-    private func closeSettings() {
-        
-    }
     private func saveSettings(){
         var stringDict = Dictionary<ClockSettingsStringValues, String>()
         stringDict[.clock_name] = self.clock_address
         stringDict[.clock_port] = self.clock_port
         _ = ClockSettingsUtility.updateClockSettingsFromDicts(managedObjectContext: self.managedObjectContext, newClockSettingsDictStringAttributes: stringDict)
         self.loadSettings()
-        self.showAlertSaved = true
     }
     
     func endEditing(){
@@ -82,6 +134,13 @@ struct SettingsView: View {
             .filter({$0.isKeyWindow}).first
         keyWindow?.endEditing(true)
         saveSettings()
+    }
+    
+    enum ConnectionTestState{
+        case base;
+        case loading;
+        case success;
+        case failure;
     }
 }
 

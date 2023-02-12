@@ -31,36 +31,47 @@ def get_current_hour() -> int:
     return time.localtime().tm_hour
 
 
-def get_current_nearest_quarter():
+def get_current_nearest_quarter() -> int:
     """
     returns the nearest quarter, between 0 and 3.
     0 is the hour sharp, so betwee XX:52:30 and XX+1:07:29
     """
     minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
-    return ((minutes + 7.5) // 15) % 4
+    return int((minutes + 7.5) // 15) % 4
 
 
-def get_current_nearest_five_minutes():
+def get_current_nearest_five_minutes() -> int:
     """
     returns the nearest 5 minutes mark, between 0 and 11.
     0 is the hour sharp, so between XX:57:30 and XX+1:02:29"""
     minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
-    return ((minutes + 2.5) // 5) % 12
+    return int((minutes + 2.5) // 5) % 12
 
 
 def run():
     print("Start of the clock")
+    last_h_five_min_color: tuple[int, int, tuple[int, int, int]] = (0, 0, (0, 0, 0))
 
     while True:
         h = get_current_hour()
-        cinq_min = get_current_nearest_five_minutes()
+        five_minutes = get_current_nearest_five_minutes()
+        color = read_current_color()
+
+        # test code ---------------------------------- BEGIN ->
         t_str = ""
         t_str += "il est "
         t_str += str(h)
         t_str += " "
-        t_str += str(cinq_min)
-        color = read_current_color()
+        t_str += str(five_minutes)
         print(t_str, " in color = ", color)
+        # test code ---------------------------------- END
+
+        new_tuple = (h, five_minutes, color)
+        if last_h_five_min_color != new_tuple:
+            show_hour(h)
+            time.sleep(0.3)
+            show_five_minutes(five_minutes)
+            last_h_five_min_color = new_tuple
         time.sleep(10)
 
 
@@ -93,7 +104,74 @@ def show_hour(h: int):
         show_midi()
 
 
-# LEDS helper methods
+def show_five_minutes(c: int):
+    if c == 0:
+        # Nothing
+        None
+    elif c == 1:
+        show_cinq_min()
+    elif c == 2:
+        show_dix_min()
+    elif c == 3:
+        show_et_above()
+        time.sleep(0.4)
+        show_quart()
+    elif c == 4:
+        show_vingt_min()
+    elif c == 5:
+        show_vingt_min()
+        time.sleep(0.5)
+        show_dash_min()
+        time.sleep(0.4)
+        show_cinq_min()
+    elif c == 6:
+        if random.randint(0, 1000) % 2 == 0:
+            show_et_above()
+        else:
+            show_et_below()
+        time.sleep(0.4)
+        show_demie()
+    elif c == 7:
+        show_moins()
+        time.sleep(0.4)
+        show_vingt_min()
+        time.sleep(0.5)
+        show_dash_min()
+        time.sleep(0.4)
+        show_cinq_min()
+
+    elif c == 8:
+        show_moins()
+        time.sleep(0.2)
+        show_vingt_min()
+    elif c == 9:
+        show_moins()
+        time.sleep(0.5)
+        show_quart()
+    elif c == 10:
+        show_moins()
+        time.sleep(0.4)
+        show_dix_min()
+    elif c == 11:
+        show_moins()
+        time.sleep(0.4)
+        show_cinq_min()
+
+
+# LEDS helper functions
+
+# Letters on the clock:
+#
+# I L N E S T O D E U X
+# Q U A T R E T R O I S
+# N E U F U N E S E P T
+# H U I T S I X C I N Q
+# M I D I X M I N U I T
+# O N Z E R H E U R E S
+# M O I N S O L E D I X
+# E T R Q U A R T P R D
+# V I N G T - C I N Q U
+# E T S D E M I E P A M
 
 
 def turn_off():
@@ -104,6 +182,7 @@ def show_il_est():
     None
 
 
+# Hours functions
 def show_une():
     None
 
@@ -164,6 +243,7 @@ def show_heures():
     None
 
 
+# Minutes functions
 def show_moins():
     None
 
@@ -198,3 +278,6 @@ def show_dash_min():
 
 def show_demie():
     None
+
+
+run()

@@ -24,8 +24,6 @@ struct MainView: View {
         NavigationView {
             VStack{
                 Spacer()
-                Text("Clock address: " + clockAddress)
-                Spacer()
                 Text("Select a color for the clock's text:")
                     .font(.headline)
                 ColorPicker("Clock color", selection: $selectedColor)
