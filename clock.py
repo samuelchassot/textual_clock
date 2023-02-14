@@ -59,15 +59,15 @@ class Clock:
             five_minutes = self.get_current_nearest_five_minutes()
             color = self.read_current_color()
 
-            new_tuple = (h, five_minutes, color)
-            if self.last_h_five_min_color != new_tuple:
+            old_tuple = self.last_h_five_min_color
+            self.last_h_five_min_color = (h, five_minutes, color)
+            if self.last_h_five_min_color != old_tuple:
                 print(color)
                 self.show_il_est()
                 time.sleep(0.2)
                 self.show_hour(h)
                 time.sleep(0.3)
                 self.show_five_minutes(five_minutes)
-                self.last_h_five_min_color = new_tuple
             time.sleep(10)
 
     def show_hour(self, h: int):
