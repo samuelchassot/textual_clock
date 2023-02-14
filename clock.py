@@ -2,6 +2,7 @@ import board
 import neopixel
 import random
 import time
+import threading
 
 
 class Clock:
@@ -53,6 +54,10 @@ class Clock:
         return int((minutes + 2.5) // 5) % 12
 
     def run(self):
+        th = threading.Thread(target=self.run_loop)
+        th.start()
+
+    def run_loop(self):
         print("Start of the clock")
         while True:
             h = self.get_current_hour()
@@ -74,8 +79,6 @@ class Clock:
                 self.show_hour(h)
                 time.sleep(0.3)
                 self.show_five_minutes(five_minutes)
-                self.last_h_five_min_color = (h, five_minutes, color)
-                old_tuple = (h, five_minutes, color)
             time.sleep(10)
 
     def show_hour(self, h: int):
