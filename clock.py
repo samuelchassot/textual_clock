@@ -60,17 +60,9 @@ class Clock:
             five_minutes = self.get_current_nearest_five_minutes()
             color = self.read_current_color()
 
-            # test code ---------------------------------- BEGIN ->
-            t_str = ""
-            t_str += "il est "
-            t_str += str(h)
-            t_str += " "
-            t_str += str(five_minutes)
-            print(t_str, " in color = ", color)
-            # test code ---------------------------------- END
-
             new_tuple = (h, five_minutes, color)
             if self.last_h_five_min_color != new_tuple:
+                print(color)
                 self.show_hour(h)
                 time.sleep(0.3)
                 self.show_five_minutes(five_minutes)
@@ -82,28 +74,52 @@ class Clock:
             self.show_minuit()
         elif h == 1 or h == 13:
             self.show_une()
+            time.sleep(0.4)
+            self.show_heure()
         elif h == 2 or h == 14:
             self.show_deux()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 3 or h == 15:
             self.show_trois()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 4 or h == 16:
             self.show_quatre()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 5 or h == 17:
             self.show_cinq()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 6 or h == 18:
             self.show_six()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 7 or h == 19:
             self.show_sept()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 8 or h == 20:
             self.show_huit()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 9 or h == 21:
             self.show_neuf()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 10 or h == 22:
             self.show_dix()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 11 or h == 23:
             self.show_onze()
+            time.sleep(0.4)
+            self.show_heures()
         elif h == 12:
             self.show_midi()
+            time.sleep(0.4)
+            self.show_heures()
 
     def show_five_minutes(self, c: int):
         if c == 0:
@@ -118,7 +134,7 @@ class Clock:
             time.sleep(0.4)
             self.show_quart()
         elif c == 4:
-            show_vingt_min()
+            self.show_vingt_min()
         elif c == 5:
             self.show_vingt_min()
             time.sleep(0.5)
@@ -174,83 +190,81 @@ class Clock:
     # E T S D E M I E P A M
 
     def turn_off(self):
-        pixels.fill(off)
+        self.pixels.fill(self.off)
 
     def show_il_est(self):
-        None
+        print("il_est")
 
     # Hours functions
     def show_une(self):
-        None
+        print("une")
 
     def show_deux(self):
-        None
+        print("deux")
 
     def show_trois(self):
-        None
+        print("trois")
 
     def show_quatre(self):
-        None
+        print("quatre")
 
     def show_cinq(self):
-        None
+        print("cinq")
 
     def show_six(self):
-        None
+        print("six")
 
     def show_sept(self):
-        None
+        print("sept")
 
     def show_huit(self):
-        None
+        print("huit")
 
     def show_neuf(self):
-        None
+        print("neuf")
 
     def show_dix(self):
-        None
+        print("dix")
 
     def show_onze(self):
-        None
+        print("onze")
 
     def show_midi(self):
-        None
+        print("midi")
 
     def show_minuit(self):
-        None
+        print("minuit")
 
     def show_heure(self):
-        None
+        print("heure")
 
     def show_heures(self):
-        None
+        print("heures")
 
     # Minutes functions
     def show_moins(self):
-        None
+        print("moins")
 
     def show_et_above(self):
-        None
+        print("et_above")
 
     def show_et_below(self):
-        None
+        print("et_below")
 
     def show_cinq_min(self):
-        None
+        print("cinq_min")
 
     def show_dix_min(self):
-        None
+        print("dix_min")
 
     def show_quart(self):
-        None
+        print("quart")
 
     def show_vingt_min(self):
-        None
+        print("vingt_min")
 
     def show_dash_min(self):
-        None
+        print("dash_min")
 
     def show_demie(self):
-        None
-
-    run()
+        print("demie")
