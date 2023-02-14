@@ -63,6 +63,8 @@ class Clock:
             new_tuple = (h, five_minutes, color)
             if self.last_h_five_min_color != new_tuple:
                 print(color)
+                self.show_il_est()
+                time.sleep(0.2)
                 self.show_hour(h)
                 time.sleep(0.3)
                 self.show_five_minutes(five_minutes)
