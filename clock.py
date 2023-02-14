@@ -12,7 +12,7 @@ class Clock:
         self.DEFAULT_COLOR = (255, 255, 255)
 
         self.n_leds = 3
-        self.pixels = neopixel.NeoPixel(board.D18, n_leds)
+        self.pixels = neopixel.NeoPixel(board.D18, self.n_leds)
         self.off = (0, 0, 0)
 
         self.last_h_five_min_color: tuple[int, int, tuple[int, int, int]] = (
