@@ -57,6 +57,10 @@ class Clock:
         while True:
             h = self.get_current_hour()
             five_minutes = self.get_current_nearest_five_minutes()
+
+            # Because we show "25 to 10" for 9:35 for example
+            if five_minutes > 6:
+                h += 1
             color = self.read_current_color()
 
             old_tuple = self.last_h_five_min_color
