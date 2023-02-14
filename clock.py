@@ -61,6 +61,8 @@ class Clock:
 
             old_tuple = self.last_h_five_min_color
             self.last_h_five_min_color = (h, five_minutes, color)
+
+            print("now: ", self.last_h_five_min_color, " old: ", old_tuple)
             if self.last_h_five_min_color != old_tuple:
                 print(color)
                 self.show_il_est()
