@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 import os
+import threading
+import clock
 
 app = Flask(__name__)
 
@@ -70,4 +72,7 @@ def read_current_color() -> tuple[int, int, int]:
 
 
 if __name__ == "__main__":
+    clk = clock.Clock()
+    th = threading.Thread(target=clk.run)
+    th.start()
     app.run(host=HOST, port=PORT, debug=True)
