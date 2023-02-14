@@ -74,7 +74,7 @@ class Clock:
                 self.show_hour(h)
                 time.sleep(0.3)
                 self.show_five_minutes(five_minutes)
-
+                self.last_h_five_min_color = (h, five_minutes, color)
                 old_tuple = (h, five_minutes, color)
             time.sleep(10)
 

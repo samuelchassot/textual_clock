@@ -2,5 +2,5 @@
 cd /home/chsa/textual_clock/
 sleep 15
 git pull
-pip3 install -r requirements.txt
+sudo pip3 install -r requirements.txt
 sudo python3 clock_app.py
