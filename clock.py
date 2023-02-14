@@ -25,7 +25,6 @@ class Clock:
         try:
             with open(self.CURRENT_COLOR_FILE_PATH, "r") as f:
                 l = f.readline()
-                print("Read color line: " + l)
                 rgb = l.split(self.SEPARATOR)
                 return (int(rgb[0]), int(rgb[1]), int(rgb[2]))
         except Exception as e:
