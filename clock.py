@@ -1,26 +1,55 @@
-import board
-import neopixel
 import random
 import time
 import threading
 
 
 class Clock:
-    def __init__(self) -> None:
-
+    def __init__(self, n_leds_per_line, led_array) -> None:
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
         self.SEPARATOR = ";"
         self.DEFAULT_COLOR = (255, 255, 255)
 
-        self.n_leds = 3
-        self.pixels = neopixel.NeoPixel(board.D18, self.n_leds)
-        self.off = (0, 0, 0)
+        self.n_leds_per_line = n_leds_per_line
+        self.pixels = led_array
+
+        assert len(led_array) % n_leds_per_line == 0
+
+        self.color_off = (0, 0, 0)
+        self.color_on = self.DEFAULT_COLOR
 
         self.last_h_five_min_color: tuple[int, int, tuple[int, int, int]] = (
             0,
             0,
             (0, 0, 0),
         )
+
+        # to debug, here is a list of the clock characters as the leds are ordered
+        # I L N E S T O D E U X
+        # Q U A T R E T R O I S
+        # N E U F U N E S E P T
+        # H U I T S I X C I N Q
+        # M I D I X M I N U I T
+        # O N Z E R H E U R E S
+        # M O I N S O L E D I X
+        # E T R Q U A R T P R D
+        # V I N G T - C I N Q U
+        # E T S D E M I E P A M
+
+        self.debug_characters = [
+            ["I", "L", "N", "E", "S", "T", "O", "D", "E", "U", "X"],
+            ["Q", "U", "A", "T", "R", "E", "T", "R", "O", "I", "S"],
+            ["N", "E", "U", "F", "U", "N", "E", "S", "E", "P", "T"],
+            ["H", "U", "I", "T", "S", "I", "X", "C", "I", "N", "Q"],
+            ["M", "I", "D", "I", "X", "M", "I", "N", "U", "I", "T"],
+            ["O", "N", "Z", "E", "R", "H", "E", "U", "R", "E", "S"],
+            ["M", "O", "I", "N", "S", "O", "L", "E", "D", "I", "X"],
+            ["E", "T", "R", "Q", "U", "A", "R", "T", "P", "R", "D"],
+            ["V", "I", "N", "G", "T", "-", "C", "I", "N", "Q", "U"],
+            ["E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M"],
+        ]
+        self.debug_characters: list[str] = [
+            item for sub in self.debug_characters for item in sub
+        ]
 
     def read_current_color(self) -> tuple[int, int, int]:
         try:
@@ -66,14 +95,14 @@ class Clock:
             # Because we show "25 to 10" for 9:35 for example
             if five_minutes > 6:
                 h += 1
-            color = self.read_current_color()
+            self.color_on = self.read_current_color()
 
             old_tuple = self.last_h_five_min_color
-            self.last_h_five_min_color = (h, five_minutes, color)
+            self.last_h_five_min_color = (h, five_minutes, self.color_on)
 
             print("now: ", self.last_h_five_min_color, " old: ", old_tuple)
             if self.last_h_five_min_color != old_tuple:
-                print(color)
+                print(self.color_on)
                 self.show_il_est()
                 time.sleep(0.2)
                 self.show_hour(h)
@@ -190,93 +219,232 @@ class Clock:
 
     # Letters on the clock:
     #
-    # I L N E S T O D E U X
-    # Q U A T R E T R O I S
-    # N E U F U N E S E P T
-    # H U I T S I X C I N Q
-    # M I D I X M I N U I T
-    # O N Z E R H E U R E S
-    # M O I N S O L E D I X
-    # E T R Q U A R T P R D
-    # V I N G T - C I N Q U
-    # E T S D E M I E P A M
+    #    0 1 2 3 4 5 6 7 8 9 10
+    # 0  I L N E S T O D E U X
+    # 1  Q U A T R E T R O I S
+    # 2  N E U F U N E S E P T
+    # 3  H U I T S I X C I N Q
+    # 4  M I D I X M I N U I T
+    # 5  O N Z E R H E U R E S
+    # 6  M O I N S O L E D I X
+    # 7  E T R Q U A R T P R D
+    # 8  V I N G T - C I N Q U
+    # 9  E T S D E M I E P A M
 
     def turn_off(self):
-        self.pixels.fill(self.off)
+        self.pixels.fill(self.color_off)
+
+    def turn_on(self, indices: list[tuple[int, int]]):
+        """Turn on the LEDs at the positions given by the tuples in the list. The tuple gives the line then the column."""
+
+        debug_str = ""
+        n_leds_per_line = 11
+        for i, j in indices:
+            index = i * n_leds_per_line + j
+            self.pixels[index] = self.color_on
+            debug_str += self.debug_characters[index]
+        return debug_str
 
     def show_il_est(self):
-        print("il_est")
+        to_turn_on = []
+        to_turn_on.append((0, 0))
+        to_turn_on.append((0, 1))
+        to_turn_on.append((0, 3))
+        to_turn_on.append((0, 4))
+        to_turn_on.append((0, 5))
+        return self.turn_on(to_turn_on)
 
     # Hours functions
     def show_une(self):
-        print("une")
+        to_turn_on = []
+        to_turn_on.append((2, 4))
+        to_turn_on.append((2, 5))
+        to_turn_on.append((2, 6))
+        return self.turn_on(to_turn_on)
 
     def show_deux(self):
-        print("deux")
+        to_turn_on = []
+        to_turn_on.append((0, 7))
+        to_turn_on.append((0, 8))
+        to_turn_on.append((0, 9))
+        to_turn_on.append((0, 10))
+        return self.turn_on(to_turn_on)
 
     def show_trois(self):
-        print("trois")
+        to_turn_on = []
+        to_turn_on.append((1, 6))
+        to_turn_on.append((1, 7))
+        to_turn_on.append((1, 8))
+        to_turn_on.append((1, 9))
+        to_turn_on.append((1, 10))
+        return self.turn_on(to_turn_on)
 
     def show_quatre(self):
-        print("quatre")
+        to_turn_on = []
+        to_turn_on.append((1, 0))
+        to_turn_on.append((1, 1))
+        to_turn_on.append((1, 2))
+        to_turn_on.append((1, 3))
+        to_turn_on.append((1, 4))
+        to_turn_on.append((1, 5))
+        return self.turn_on(to_turn_on)
 
     def show_cinq(self):
-        print("cinq")
+        to_turn_on = []
+        to_turn_on.append((3, 7))
+        to_turn_on.append((3, 8))
+        to_turn_on.append((3, 9))
+        to_turn_on.append((3, 10))
+        return self.turn_on(to_turn_on)
 
     def show_six(self):
-        print("six")
+        to_turn_on = []
+        to_turn_on.append((3, 4))
+        to_turn_on.append((3, 5))
+        to_turn_on.append((3, 6))
+        return self.turn_on(to_turn_on)
 
     def show_sept(self):
-        print("sept")
+        to_turn_on = []
+        to_turn_on.append((2, 7))
+        to_turn_on.append((2, 8))
+        to_turn_on.append((2, 9))
+        to_turn_on.append((2, 10))
+        return self.turn_on(to_turn_on)
 
     def show_huit(self):
-        print("huit")
+        to_turn_on = []
+        to_turn_on.append((3, 0))
+        to_turn_on.append((3, 1))
+        to_turn_on.append((3, 2))
+        to_turn_on.append((3, 3))
+        return self.turn_on(to_turn_on)
 
     def show_neuf(self):
-        print("neuf")
+        to_turn_on = []
+        to_turn_on.append((2, 0))
+        to_turn_on.append((2, 1))
+        to_turn_on.append((2, 2))
+        to_turn_on.append((2, 3))
+        return self.turn_on(to_turn_on)
 
     def show_dix(self):
-        print("dix")
+        to_turn_on = []
+        to_turn_on.append((4, 2))
+        to_turn_on.append((4, 3))
+        to_turn_on.append((4, 4))
+        return self.turn_on(to_turn_on)
 
     def show_onze(self):
-        print("onze")
+        to_turn_on = []
+        to_turn_on.append((5, 0))
+        to_turn_on.append((5, 1))
+        to_turn_on.append((5, 2))
+        to_turn_on.append((5, 3))
+        return self.turn_on(to_turn_on)
 
     def show_midi(self):
-        print("midi")
+        to_turn_on = []
+        to_turn_on.append((4, 0))
+        to_turn_on.append((4, 1))
+        to_turn_on.append((4, 2))
+        to_turn_on.append((4, 3))
+        return self.turn_on(to_turn_on)
 
     def show_minuit(self):
-        print("minuit")
+        to_turn_on = []
+        to_turn_on.append((4, 5))
+        to_turn_on.append((4, 6))
+        to_turn_on.append((4, 7))
+        to_turn_on.append((4, 8))
+        to_turn_on.append((4, 9))
+        to_turn_on.append((4, 10))
+        return self.turn_on(to_turn_on)
 
     def show_heure(self):
-        print("heure")
+        to_turn_on = []
+        to_turn_on.append((5, 5))
+        to_turn_on.append((5, 6))
+        to_turn_on.append((5, 7))
+        to_turn_on.append((5, 8))
+        to_turn_on.append((5, 9))
+        return self.turn_on(to_turn_on)
 
     def show_heures(self):
-        print("heures")
+        to_turn_on = []
+        to_turn_on.append((5, 5))
+        to_turn_on.append((5, 6))
+        to_turn_on.append((5, 7))
+        to_turn_on.append((5, 8))
+        to_turn_on.append((5, 9))
+        to_turn_on.append((5, 10))
+        return self.turn_on(to_turn_on)
 
     # Minutes functions
     def show_moins(self):
-        print("moins")
+        to_turn_on = []
+        to_turn_on.append((6, 0))
+        to_turn_on.append((6, 1))
+        to_turn_on.append((6, 2))
+        to_turn_on.append((6, 3))
+        to_turn_on.append((6, 4))
+        return self.turn_on(to_turn_on)
 
     def show_et_above(self):
-        print("et_above")
+        to_turn_on = []
+        to_turn_on.append((7, 0))
+        to_turn_on.append((7, 1))
+        return self.turn_on(to_turn_on)
 
     def show_et_below(self):
-        print("et_below")
+        to_turn_on = []
+        to_turn_on.append((9, 0))
+        to_turn_on.append((9, 1))
+        return self.turn_on(to_turn_on)
 
     def show_cinq_min(self):
-        print("cinq_min")
+        to_turn_on = []
+        to_turn_on.append((8, 6))
+        to_turn_on.append((8, 7))
+        to_turn_on.append((8, 8))
+        to_turn_on.append((8, 9))
+        return self.turn_on(to_turn_on)
 
     def show_dix_min(self):
-        print("dix_min")
+        to_turn_on = []
+        to_turn_on.append((6, 8))
+        to_turn_on.append((6, 9))
+        to_turn_on.append((6, 10))
+        return self.turn_on(to_turn_on)
 
     def show_quart(self):
-        print("quart")
+        to_turn_on = []
+        to_turn_on.append((7, 3))
+        to_turn_on.append((7, 4))
+        to_turn_on.append((7, 5))
+        to_turn_on.append((7, 6))
+        to_turn_on.append((7, 7))
+        return self.turn_on(to_turn_on)
 
     def show_vingt_min(self):
-        print("vingt_min")
+        to_turn_on = []
+        to_turn_on.append((8, 0))
+        to_turn_on.append((8, 1))
+        to_turn_on.append((8, 2))
+        to_turn_on.append((8, 3))
+        to_turn_on.append((8, 4))
+        return self.turn_on(to_turn_on)
 
     def show_dash_min(self):
-        print("dash_min")
+        to_turn_on = []
+        to_turn_on.append((8, 5))
+        return self.turn_on(to_turn_on)
 
     def show_demie(self):
-        print("demie")
+        to_turn_on = []
+        to_turn_on.append((9, 3))
+        to_turn_on.append((9, 4))
+        to_turn_on.append((9, 5))
+        to_turn_on.append((9, 6))
+        to_turn_on.append((9, 7))
+        return self.turn_on(to_turn_on)
