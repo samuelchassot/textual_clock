@@ -10,5 +10,5 @@ pixels = neopixel.NeoPixel(board.D18, n_leds)
 while True:
     pixels.fill((0, 0, 0))
     for i in range(n_leds):
-        pixels[i] = (255, 255, 255)
-        time.sleep(0.1)
+        pixels[i] = (255, 255, 0)
+        time.sleep(0.3)
