@@ -83,4 +83,5 @@ if __name__ == "__main__":
     # clk = clock.Clock(n_leds_per_line, pixels)
     # clk.run()
     th = threading.Thread(target=test_leds_irl.main)
+    th.start()
     app.run(host=HOST, port=PORT)
