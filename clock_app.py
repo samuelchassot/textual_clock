@@ -6,6 +6,7 @@ import neopixel
 
 # TEST
 import test_leds_irl
+import threading
 
 app = Flask(__name__)
 
@@ -81,5 +82,5 @@ if __name__ == "__main__":
     # pixels = neopixel.NeoPixel(board.D18, n_leds)
     # clk = clock.Clock(n_leds_per_line, pixels)
     # clk.run()
+    th = threading.Thread(target=test_leds_irl.main)
     app.run(host=HOST, port=PORT)
-    test_leds_irl.main()
