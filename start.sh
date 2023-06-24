@@ -16,5 +16,4 @@ done
 # Your actual script starts here
 git pull
 sudo pip3 install -r requirements.txt
-# sudo python3 clock_app.py
-sudo python3 test_leds_irl.py
+sudo python3 clock_app.py
