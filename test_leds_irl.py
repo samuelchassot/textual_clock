@@ -11,5 +11,5 @@ while True:
     pixels.fill((0, 0, 0))
     time.sleep(2)
     for i in range(n_leds):
-        pixels[i] = (255, 255, 255)
+        pixels[i] = (255, 0, 0)
         time.sleep(0.8)
