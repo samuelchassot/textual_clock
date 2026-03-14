@@ -16,6 +16,7 @@ def main():
         pixels.fill((0, 0, 0))
         time.sleep(0.8)
         pixels.fill((255, 255, 255))
+        time.sleep(0.8)
         # for i in range(n_leds):
         #     pixels[i] = read_current_color()
         #     time.sleep(0.8)
