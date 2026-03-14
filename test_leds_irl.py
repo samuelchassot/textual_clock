@@ -14,10 +14,11 @@ def main():
 
     while True:
         pixels.fill((0, 0, 0))
-        time.sleep(2)
-        for i in range(n_leds):
-            pixels[i] = read_current_color()
-            time.sleep(0.8)
+        time.sleep(0.8)
+        pixels.fill((255, 255, 255))
+        # for i in range(n_leds):
+        #     pixels[i] = read_current_color()
+        #     time.sleep(0.8)
 
 
 def read_current_color() -> tuple[int, int, int]:
