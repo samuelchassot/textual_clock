@@ -84,4 +84,4 @@ if __name__ == "__main__":
     # clk.run()
     th = threading.Thread(target=test_leds_irl.main)
     th.start()
-    app.run(host=HOST, port=PORT)
+    # app.run(host=HOST, port=PORT)
