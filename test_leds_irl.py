@@ -13,8 +13,10 @@ def main():
     pixels = neopixel.NeoPixel(board.D18, n_leds)
 
     while True:
+        print("turning off")
         pixels.fill((0, 0, 0))
         time.sleep(0.8)
+        print("turning on")
         pixels.fill((255, 255, 255))
         time.sleep(0.8)
         # for i in range(n_leds):
