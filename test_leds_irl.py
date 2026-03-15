@@ -32,4 +32,5 @@ def read_current_color() -> tuple[int, int, int]:
         print("ERROR: cannot read the current color!\n", e)
         return DEFAULT_COLOR
 
+print("caca")
 main()
