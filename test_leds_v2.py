@@ -4,7 +4,7 @@ import rp2
 import time
 
 # Configure the number of WS2812 LEDs.
-NUM_LEDS = 1
+NUM_LEDS = 5
 PIN_NUM = 18
 brightness = 1
 
