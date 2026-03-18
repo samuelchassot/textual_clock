@@ -2,7 +2,9 @@
 cd /home/chsa/textual_clock/
 
 # Check for internet connection
-while true; do
+# check 4 times with a 5 second interval
+i = 0
+while [ $i -lt 4 ]; do
   if ping -c 1 google.com; then
     echo "Internet is up. Proceeding..."
     break
@@ -10,6 +12,7 @@ while true; do
     echo "Waiting for internet connection..."
     # Sleep for 5 seconds before checking again
     sleep 5
+    i=$((i + 1))
   fi
 done
 
