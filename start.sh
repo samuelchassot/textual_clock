@@ -3,7 +3,7 @@ cd /home/chsa/textual_clock/
 
 # Check for internet connection
 # check 4 times with a 5 second interval
-i = 0
+i=0
 INTERNET_ACTIVE=0
 while [ $i -lt 4 ]; do
   if ping -c 1 google.com; then
