@@ -51,6 +51,7 @@ class Clock:
             ["E", "T", "R", "Q", "U", "A", "R", "T", "P", "R", "D"],
             ["V", "I", "N", "G", "T", "-", "C", "I", "N", "Q", "U"],
             ["E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M"],
+            ["minute4", "minute1", "minute2", "minute3"]
         ]
         self.debug_characters: list[str] = [
             item for sub in self.debug_characters for item in sub
