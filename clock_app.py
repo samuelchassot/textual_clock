@@ -4,6 +4,12 @@ import clock
 import board
 import neopixel
 
+# TESTING IMPORTS
+import test_leds_irl
+import threading
+
+import test_leds_irl_v2
+
 app = Flask(__name__)
 
 HOST = "textualclock.local"
