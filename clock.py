@@ -14,6 +14,8 @@ class Clock:
 
         assert len(led_array) % n_leds_per_line == 0
 
+        self.n_columns = len(led_array) / n_leds_per_line
+
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
 
@@ -230,6 +232,27 @@ class Clock:
     # 7  E T R Q U A R T P R D
     # 8  V I N G T - C I N Q U
     # 9  E T S D E M I E P A M
+    #
+    # BUT the LEDs are soldered in a back and forth motion, which gives these indices:
+
+    #    0   1   2   3   4   5   6   7   8   9   10
+    #    21  20  19  18  17  16  15  14  13  12  11
+    #    22  23  24  25  26  27  28  29  30  31  32
+    #    43  42  41  40  39  38  37  36  35  34  33
+    #    44  45  46  47  48  49  50  51  52  53  54
+    #    65  64  63  62  61  60  59  58  57  56  55
+    #    66  67  68  69  70  71  72  73  74  75  76
+    #    87  86  85  84  83  82  81  80  79  78  77
+    #    88  89  90  91  92  93  94  95  96  97  98
+    #    109 108 107 106 105 104 103 102 101 100 99
+
+    # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
+    def to_physical_index(self, i: int, j: int) -> int:
+        if i % 2 == 0:
+            return i * self.n_leds_per_line + j
+        else:
+            return i * self.n_leds_per_line + (self.n_leds_per_line - j - 1)
+
 
     def turn_off(self):
         self.pixels.fill(self.color_off)
@@ -238,9 +261,8 @@ class Clock:
         """Turn on the LEDs at the positions given by the tuples in the list. The tuple gives the line then the column."""
 
         debug_str = ""
-        n_leds_per_line = 11
         for i, j in indices:
-            index = i * n_leds_per_line + j
+            index = self.to_physical_index(i, j)
             self.pixels[index] = self.color_on
             debug_str += self.debug_characters[index]
         return debug_str
@@ -448,3 +470,15 @@ class Clock:
         to_turn_on.append((9, 6))
         to_turn_on.append((9, 7))
         return self.turn_on(to_turn_on)
+    
+
+    def test_leds_column_per_column(self):
+        for j in range(self.n_leds_per_line):
+            to_turn_on = []
+            for i in range(self.n_columns):
+                to_turn_on.append((i, j))
+            self.turn_on(to_turn_on)
+            time.sleep(0.5)
+        time.sleep(2)
+        self.turn_off()
+
