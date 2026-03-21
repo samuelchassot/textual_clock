@@ -292,6 +292,7 @@ class Clock:
         debug_str = ""
         for i, j in indices:
             index = self.to_physical_index(i, j)
+            print(f"Turning on LED at line {i}, column {j} (physical index {index})")
             self.pixels[index] = self.color_on
             debug_str += self.debug_characters[index]
         return debug_str
