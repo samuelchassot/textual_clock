@@ -31,7 +31,7 @@ source venv/bin/activate
 if [ $INTERNET_ACTIVE -eq 1 ]; then
   echo "Internet connection established. Running the clock application..."
   git pull
-  sudo pip3 install -r requirements.txt
+  pip3 install -r requirements.txt
 else
   echo "No internet connection after multiple attempts. Running the clock application without updates..."
 fi
