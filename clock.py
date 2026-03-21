@@ -267,7 +267,7 @@ class Clock:
     # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
     def to_physical_index(self, i: int, j: int) -> int:
         if i == -1:
-            return self.n_leds_per_line * self.n_columns + 1 + (j % 4)
+            return self.n_leds_per_line * self.n_columns + 1 + int(j % 4)
         if i % 2 == 0:
             return i * self.n_leds_per_line + j
         else:
