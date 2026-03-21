@@ -85,7 +85,7 @@ def read_current_color() -> tuple[int, int, int]:
 
 if __name__ == "__main__":
     n_leds_per_line = 11
-    n_leds = n_leds_per_line * 10
+    n_leds = n_leds_per_line * 10 + 4 # 10 lines of 11 LEDs + 4 LEDs for the minutes in the corners
     pixels = neopixel.NeoPixel(board.D18, n_leds)
     clk = clock.Clock(n_leds_per_line, pixels)
     clk.run()
