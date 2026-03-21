@@ -1,5 +1,4 @@
 import board
-from clock import Clock
 import neopixel
 import time
 
