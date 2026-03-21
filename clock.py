@@ -16,7 +16,7 @@ class Clock:
         # 4 leds are in the corners to indicate the current minute
         assert (len(led_array) - 4) % n_leds_per_line == 0
 
-        self.n_columns = (len(led_array) - 4) / n_leds_per_line
+        self.n_columns = int((len(led_array) - 4) / n_leds_per_line)
 
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
