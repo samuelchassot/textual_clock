@@ -23,14 +23,14 @@ done
 # Check if a venv already exists, if not create one
 if [ ! -d "venv" ]; then
   echo "Creating virtual environment..."
-  sudo python3 -m venv venv
+  # sudo python3 -m venv venv
 fi
 
 if [ $INTERNET_ACTIVE -eq 1 ]; then
   echo "Internet connection established. Running the clock application..."
   git pull
-  sudo ./venv/bin/pip3 install -r requirements.txt
+  sudo pip3 install -r requirements.txt
 else
   echo "No internet connection after multiple attempts. Running the clock application without updates..."
 fi
-sudo ./venv/bin/python3 clock_app.py
+sudo python3 clock_app.py
