@@ -4,9 +4,11 @@ cd /home/chsa/textual_clock/
 # Check for internet connection
 # check 4 times with a 5 second interval
 i = 0
+INTERNET_ACTIVE=0
 while [ $i -lt 4 ]; do
   if ping -c 1 google.com; then
     echo "Internet is up. Proceeding..."
+    INTERNET_ACTIVE=1
     break
   else
     echo "Waiting for internet connection..."
@@ -17,6 +19,11 @@ while [ $i -lt 4 ]; do
 done
 
 # Your actual script starts here
-git pull
-sudo pip3 install -r requirements.txt
-sudo python3 clock_app.py
+if [ $INTERNET_ACTIVE -eq 1 ]; then
+  echo "Internet connection established. Running the clock application..."
+  git pull
+  sudo pip3 install -r requirements.txt
+else
+  echo "No internet connection after multiple attempts. Running the clock application without updates..."
+  sudo python3 clock_app.py
+fi
