@@ -244,7 +244,7 @@ class Clock:
     #    66  67  68  69  70  71  72  73  74  75  76
     #    87  86  85  84  83  82  81  80  79  78  77
     #    88  89  90  91  92  93  94  95  96  97  98
-    #.   109 108 107 106 105 104 103 102 101 100 99
+    #    109 108 107 106 105 104 103 102 101 100 99
 
     # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
     def to_physical_index(self, i: int, j: int) -> int:
