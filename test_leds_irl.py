@@ -9,7 +9,8 @@ DEFAULT_COLOR = (255, 255, 255)
 
 def main():
     n_leds_per_line = 11
-    n_leds = n_leds_per_line * 10
+    n_lines = 10
+    n_leds = n_leds_per_line * n_lines
     pixels = neopixel.NeoPixel(board.D18, n_leds)
 
     while True:
@@ -17,11 +18,24 @@ def main():
         pixels.fill((0, 0, 0))
         time.sleep(0.8)
         print("turning on")
-        pixels.fill((255, 255, 255))
-        time.sleep(0.8)
+        
+        for i in range(n_lines):
+            for j in range(n_leds_per_line):
+                physical_index = to_physical_index(i, j, n_leds_per_line)
+                print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
+                pixels[physical_index] = (255, 255, 255)
+                time.sleep(0.5)
+            
+        time.sleep(2)
         # for i in range(n_leds):
         #     pixels[i] = read_current_color()
         #     time.sleep(0.8)
+
+def to_physical_index(i: int, j: int, n_leds_per_line: int) -> int:
+    if i % 2 == 0:
+        return i * n_leds_per_line + j
+    else:
+        return i * n_leds_per_line + (n_leds_per_line - j - 1)
 
 
 def read_current_color() -> tuple[int, int, int]:
