@@ -4,6 +4,12 @@ import clock
 import board
 import neopixel
 
+# TEST
+import test_leds_irl
+import threading
+
+import test_leds_irl_v2
+
 app = Flask(__name__)
 
 HOST = "textualclock.local"
@@ -73,9 +79,11 @@ def read_current_color() -> tuple[int, int, int]:
 
 
 if __name__ == "__main__":
-    n_leds_per_line = 11
-    n_leds = n_leds_per_line * 10
-    pixels = neopixel.NeoPixel(board.D18, n_leds)
-    clk = clock.Clock(n_leds_per_line, pixels)
-    clk.run()
+    # n_leds_per_line = 11
+    # n_leds = n_leds_per_line * 10
+    # pixels = neopixel.NeoPixel(board.D18, n_leds)
+    # clk = clock.Clock(n_leds_per_line, pixels)
+    # clk.run()
+    th = threading.Thread(target=test_leds_irl.main)
+    th.start()
     app.run(host=HOST, port=PORT)
