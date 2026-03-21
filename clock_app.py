@@ -5,10 +5,10 @@ import board
 import neopixel
 
 # TEST
-import test_leds_irl
-import threading
+# import test_leds_irl
+# import threading
 
-import test_leds_irl_v2
+# import test_leds_irl_v2
 
 app = Flask(__name__)
 
