@@ -42,15 +42,20 @@ struct HttpClockApiUtility {
         } else {
             print("UNSET")
         }
-        let url = URL(string: "http://\(clockAddress)/color")!
-        var urlRequest = URLRequest(url: url)
-        urlRequest.timeoutInterval = 3
-        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpMethod = "POST"
-        urlRequest.httpBody = payload
-        sendRequest(request: urlRequest, onSuccess: {(data) in
-            onSuccess("Color update successful!")
-        }, onError: onError)
+        let urlString = "http://\(clockAddress)/color"
+        let urlO = URL(string: urlString)
+        if let url = urlO {
+            var urlRequest = URLRequest(url: url)
+            urlRequest.timeoutInterval = 3
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpMethod = "POST"
+            urlRequest.httpBody = payload
+            sendRequest(request: urlRequest, onSuccess: {(data) in
+                onSuccess("Color update successful!")
+            }, onError: onError)
+        } else {
+            onError("Cannot connect to URL: \(urlString))")
+        }
         
     }
     static func getCurrentColor(clockAddress: String, onSuccess: @escaping (RgbColor) -> Void, onError: @escaping (String) -> Void) -> Void {
