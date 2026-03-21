@@ -84,6 +84,6 @@ if __name__ == "__main__":
     # pixels = neopixel.NeoPixel(board.D18, n_leds)
     # clk = clock.Clock(n_leds_per_line, pixels)
     # clk.run()
-    th = threading.Thread(target=test_leds_irl_v2.main)
+    th = threading.Thread(target=test_leds_irl.main)
     th.start()
     app.run(host=HOST, port=PORT)
