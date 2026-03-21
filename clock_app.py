@@ -4,12 +4,6 @@ import clock
 import board
 import neopixel
 
-# TEST
-import test_leds_irl
-import threading
-
-import test_leds_irl_v2
-
 app = Flask(__name__)
 
 HOST = "textualclock.local"
@@ -75,6 +69,17 @@ def read_current_color() -> tuple[int, int, int]:
             return (int(rgb[0]), int(rgb[1]), int(rgb[2]))
     except Exception as e:
         print("ERROR: cannot read the current color!\n", e)
+        with open(CURRENT_COLOR_FILE_PATH, "w") as f:
+            to_write = (
+                str(DEFAULT_COLOR[0])
+                + SEPARATOR
+                + str(DEFAULT_COLOR[1])
+                + SEPARATOR
+                + str(DEFAULT_COLOR[2])
+            )
+            print("Writing default color: " + to_write)
+            f.write(to_write)
+            f.close()
         return DEFAULT_COLOR
 
 
