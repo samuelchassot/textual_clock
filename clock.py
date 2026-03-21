@@ -232,8 +232,6 @@ class Clock:
             time.sleep(0.4)
             self.show_cinq_min()
 
-    def show_minutes_after_five_minutes(self, c: int):
-
 
     # LEDS helper functions
 
