@@ -25,5 +25,5 @@ if [ $INTERNET_ACTIVE -eq 1 ]; then
   sudo pip3 install -r requirements.txt
 else
   echo "No internet connection after multiple attempts. Running the clock application without updates..."
-  sudo python3 clock_app.py
 fi
+sudo python3 clock_app.py
