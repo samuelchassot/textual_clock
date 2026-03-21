@@ -29,7 +29,6 @@ The branches `raspberry_xx` contain only the code for each raspberry. They are i
       WantedBy=multi-user.target
       ```
    2. enable the service with `sudo systemctl enable textual_clock.service`
-5. modify `/etc/rc.local` and add `sudo sh /home/<username>/textual_clock/start.sh`
 6. setup the scheduled reboot:
    1. execute `sudo crontab -e`
    2. (select your editor if this is the first time. I advise to use nano)
