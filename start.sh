@@ -19,6 +19,15 @@ while [ $i -lt 4 ]; do
 done
 
 # Your actual script starts here
+
+# Check if a venv already exists, if not create one
+if [ ! -d "venv" ]; then
+  echo "Creating virtual environment..."
+  python3 -m venv venv
+fi
+# Activate the virtual environment
+source venv/bin/activate
+
 if [ $INTERNET_ACTIVE -eq 1 ]; then
   echo "Internet connection established. Running the clock application..."
   git pull
