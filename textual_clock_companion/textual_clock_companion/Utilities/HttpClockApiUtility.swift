@@ -86,28 +86,38 @@ struct HttpClockApiUtility {
             onError("Cannot encode the json payload!")
             return
         }
-        let url = URL(string: "http://\(clockAddress)/reboot")!
-        var urlRequest = URLRequest(url: url)
-        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpMethod = "POST"
-        sendRequest(request: urlRequest, onSuccess: {(data) in
-            onSuccess("Reboot command sent!")
-        }, onError: onError)
+        let urlString = "http://\(clockAddress)/reboot"
+        let urlO = URL(string: urlString)
+        if let url = urlO {
+            var urlRequest = URLRequest(url: url)
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpMethod = "POST"
+            sendRequest(request: urlRequest, onSuccess: {(data) in
+                onSuccess("Reboot command sent!")
+            }, onError: onError)
+        } else {
+            onError("Cannot create url for \(urlString)")
+        }
     }
     
     static func checkLiveness(clockAddress: String, onSuccess: @escaping (LivenessMessage) -> Void, onError: @escaping (String) -> Void) -> Void {
-        let url = URL(string: "http://\(clockAddress)/liveness")!
-        var urlRequest = URLRequest(url: url)
-        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpMethod = "GET"
-        sendRequest(request: urlRequest, onSuccess: {(data) in
-            let msg = try? JSONDecoder().decode(LivenessMessage.self, from: data)
-            if(msg == nil){
-                onError("Cannot decode the received liveness message!")
-            }else{
-                onSuccess(msg!)
-            }
-        }, onError: onError)
+        let urlString = "http://\(clockAddress)/liveness"
+        let urlO = URL(string: urlString)
+        if let url = urlO {
+            var urlRequest = URLRequest(url: url)
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpMethod = "GET"
+            sendRequest(request: urlRequest, onSuccess: {(data) in
+                let msg = try? JSONDecoder().decode(LivenessMessage.self, from: data)
+                if(msg == nil){
+                    onError("Cannot decode the received liveness message!")
+                }else{
+                    onSuccess(msg!)
+                }
+            }, onError: onError)
+        } else {
+            onError("Cannot create url for \(urlString)")
+        }
     }
     
     private static func sendRequest(request:URLRequest, onSuccess: @escaping (Data) -> Void, onError: @escaping (String) -> Void){
