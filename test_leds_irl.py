@@ -23,7 +23,7 @@ def main():
             for j in range(n_leds_per_line):
                 physical_index = to_physical_index(i, j, n_leds_per_line)
                 print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
-                pixels[physical_index] = (0, 100, 0)
+                pixels[physical_index] = read_current_color()
                 time.sleep(0.5)
             
         time.sleep(2)
