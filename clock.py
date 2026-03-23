@@ -16,7 +16,7 @@ class Clock:
         # 4 leds are in the corners to indicate the current minute
         assert (len(led_array) - 4) % n_leds_per_line == 0
 
-        self.n_columns = int((len(led_array) - 4) / n_leds_per_line)
+        self.n_lines = int((len(led_array) - 4) / n_leds_per_line)
 
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
@@ -110,8 +110,8 @@ class Clock:
             print("turning on")
             self.color_on = self.read_current_color()
             
-            for i in range(n_lines):
-                for j in range(n_leds_per_line):
+            for i in range(self.n_lines):
+                for j in range(self.n_leds_per_line):
                     # physical_index = to_physical_index(i, j, n_leds_per_line)
                     # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
                     self.turn_on([(i,j)])
@@ -283,7 +283,7 @@ class Clock:
     # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
     def to_physical_index(self, i: int, j: int) -> int:
         if i == -1:
-            return self.n_leds_per_line * self.n_columns + int(j % 4)
+            return self.n_leds_per_line * self.n_lines + int(j % 4)
         if i % 2 == 0:
             return i * self.n_leds_per_line + j
         else:
@@ -533,7 +533,7 @@ class Clock:
     def test_leds_column_per_column(self):
         for j in range(self.n_leds_per_line):
             to_turn_on = []
-            for i in range(self.n_columns):
+            for i in range(self.n_lines):
                 to_turn_on.append((i, j))
             self.turn_on(to_turn_on)
             time.sleep(0.5)
