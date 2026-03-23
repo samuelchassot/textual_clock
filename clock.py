@@ -112,9 +112,9 @@ class Clock:
             
             for i in range(n_lines):
                 for j in range(n_leds_per_line):
-                    physical_index = to_physical_index(i, j, n_leds_per_line)
-                    print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
-                    pixels[physical_index] = read_current_color()
+                    # physical_index = to_physical_index(i, j, n_leds_per_line)
+                    # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
+                    self.turn_on([(i,j)])
                     time.sleep(0.5)
                 
             time.sleep(2)
