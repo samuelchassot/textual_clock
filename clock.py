@@ -104,6 +104,21 @@ class Clock:
     def run_loop(self):
         print("Start of the clock")
         while True:
+            # print("turning off")
+            # self.turn_off()
+            # pixels.fill((0, 0, 0))
+            # time.sleep(0.8)
+            # print("turning on")
+            # self.color_on = self.read_current_color()
+            
+            # for i in range(n_lines):
+            #     for j in range(n_leds_per_line):
+            #         physical_index = to_physical_index(i, j, n_leds_per_line)
+            #         print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
+            #         pixels[physical_index] = read_current_color()
+            #         time.sleep(0.5)
+                
+            # time.sleep(2)
             h = self.get_current_hour()
             five_minutes = self.get_current_nearest_five_minutes()
             residual_minutes = self.get_current_minute_after_five_minutes()
@@ -118,7 +133,8 @@ class Clock:
 
             print("now: ", self.last_h_five_min_residual_minutes_color, " old: ", old_tuple)
             if self.last_h_five_min_residual_minutes_color != old_tuple:
-                print(self.color_on)
+                print(f"color: {self.color_on}")
+                self.turn_off()
                 self.show_il_est()
                 time.sleep(0.2)
                 self.show_hour(h)
