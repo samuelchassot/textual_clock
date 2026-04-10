@@ -116,6 +116,11 @@ class Clock:
                     # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
                     self.turn_on([(i,j)])
                     time.sleep(0.5)
+            
+            # turn on the 4 corners
+            for i in range(1, 5):
+                self.turn_on([(-1,i)])
+                time.sleep(0.5)
                 
             time.sleep(2)
             # h = self.get_current_hour()
