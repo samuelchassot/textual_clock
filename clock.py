@@ -4,8 +4,12 @@ import time
 import threading
 
 
+class TimeProvider:
+    def get_current_time(self) -> time.struct_time:
+        return  time.localtime()
 class Clock:
-    def __init__(self, n_leds_per_line, led_array) -> None:
+    def __init__(self, n_leds_per_line, led_array, time_provider: TimeProvider = TimeProvider()) -> None:
+        self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
         self.SEPARATOR = ";"
         self.DEFAULT_COLOR = (255, 255, 255)
@@ -70,29 +74,44 @@ class Clock:
         """
         returns the current hour as an int, between 0 and 23, 0 is midnight.
         """
-        return time.localtime().tm_hour
+        return self.time_provider.get_current_time().tm_hour
 
     def get_current_nearest_quarter(self) -> int:
         """
         returns the nearest quarter, between 0 and 3.
         0 is the hour sharp, so betwee XX:52:30 and XX+1:07:29
         """
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
         return int((minutes + 7.5) // 15) % 4
+    
+    def get_current_quarter(self) -> int:
+        """
+        returns the current quarter, between 0 and 3.
+        0 is the hour sharp, so betwee XX:00:00 and XX:14:59, 1 is between XX:15:00 and XX:29:59, etc.
+        """
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
+        return int(minutes // 15) % 4
 
     def get_current_nearest_five_minutes(self) -> int:
         """
         returns the nearest 5 minutes mark, between 0 and 11.
         0 is the hour sharp, so between XX:57:30 and XX+1:02:29"""
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
         return int((minutes + 2.5) // 5) % 12
+    
+    def get_current_five_minutes(self) -> int:
+        """
+        returns the nearest 5 minutes mark, between 0 and 11.
+        0 is the hour sharp, so between XX:00:00 and XX:04:59, 1 is between XX:05:00 and XX:09:59, etc. """
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
+        return int(minutes // 5) % 12
     
     def get_current_minute_after_five_minutes(self) -> int:
         """
         returns the number of minutes after the last 5 minutes mark, between 0 and 4.
         So for example, if it's XX:17:30, it will return 2, because it's 2 minutes after the nearest 5 minutes mark which is XX:15:00.
         """
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
         return int(floor(minutes % 5))
     
 
@@ -104,7 +123,7 @@ class Clock:
         print("Start of the clock")
         while True:
             h = self.get_current_hour()
-            five_minutes = self.get_current_nearest_five_minutes()
+            five_minutes = self.get_current_five_minutes()
             residual_minutes = self.get_current_minute_after_five_minutes()
 
             # Because we show "25 to 10" for 9:35 for example
@@ -178,7 +197,6 @@ class Clock:
         elif h == 12:
             self.show_midi()
             time.sleep(0.4)
-            self.show_heures()
 
     def show_five_minutes(self, c: int):
         if c == 0:
