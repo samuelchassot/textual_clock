@@ -175,10 +175,10 @@ class Clock:
                 time.sleep(0.3)
                 self.show_five_minutes(five_minutes)
                 time.sleep(0.3)
-                if self.get_am_pm() == 0:
-                    self.show_am()
-                else:
-                    self.show_pm()
+                # if self.get_am_pm() == 0:
+                #     self.show_am()
+                # else:
+                #     self.show_pm()
             if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2]:
                 self.show_minutes_after_five_minutes(residual_minutes)
             time.sleep(5)
