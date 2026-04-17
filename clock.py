@@ -104,49 +104,49 @@ class Clock:
     def run_loop(self):
         print("Start of the clock")
         while True:
-            print("turning off")
-            self.turn_off()
-            time.sleep(0.8)
-            print("turning on")
-            self.color_on = self.read_current_color()
-            
-            for i in range(self.n_lines):
-                for j in range(self.n_leds_per_line):
-                    # physical_index = to_physical_index(i, j, n_leds_per_line)
-                    # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
-                    self.turn_on([(i,j)])
-                    time.sleep(0.5)
-            
-            # turn on the 4 corners
-            for i in range(1, 5):
-                self.turn_on([(-1,i)])
-                time.sleep(0.5)
-                
-            time.sleep(2)
-            # h = self.get_current_hour()
-            # five_minutes = self.get_current_nearest_five_minutes()
-            # residual_minutes = self.get_current_minute_after_five_minutes()
-
-            # # Because we show "25 to 10" for 9:35 for example
-            # if five_minutes > 6:
-            #     h += 1
+            # print("turning off")
+            # self.turn_off()
+            # time.sleep(0.8)
+            # print("turning on")
             # self.color_on = self.read_current_color()
+            
+            # for i in range(self.n_lines):
+            #     for j in range(self.n_leds_per_line):
+            #         # physical_index = to_physical_index(i, j, n_leds_per_line)
+            #         # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
+            #         self.turn_on([(i,j)])
+            #         time.sleep(0.5)
+            
+            # # turn on the 4 corners
+            # for i in range(1, 5):
+            #     self.turn_on([(-1,i)])
+            #     time.sleep(0.5)
+                
+            # time.sleep(2)
+            h = self.get_current_hour()
+            five_minutes = self.get_current_nearest_five_minutes()
+            residual_minutes = self.get_current_minute_after_five_minutes()
 
-            # old_tuple = self.last_h_five_min_residual_minutes_color
-            # self.last_h_five_min_residual_minutes_color = (h, five_minutes, residual_minutes, self.color_on)
+            # Because we show "25 to 10" for 9:35 for example
+            if five_minutes > 6:
+                h += 1
+            self.color_on = self.read_current_color()
 
-            # print("now: ", self.last_h_five_min_residual_minutes_color, " old: ", old_tuple)
-            # if self.last_h_five_min_residual_minutes_color != old_tuple:
-            #     print(f"color: {self.color_on}")
-            #     self.turn_off()
-            #     self.show_il_est()
-            #     time.sleep(0.2)
-            #     self.show_hour(h)
-            #     time.sleep(0.3)
-            #     self.show_five_minutes(five_minutes)
-            #     time.sleep(0.3)
-            #     self.show_minutes_after_five_minutes(residual_minutes)
-            # time.sleep(10)
+            old_tuple = self.last_h_five_min_residual_minutes_color
+            self.last_h_five_min_residual_minutes_color = (h, five_minutes, residual_minutes, self.color_on)
+
+            print("now: ", self.last_h_five_min_residual_minutes_color, " old: ", old_tuple)
+            if self.last_h_five_min_residual_minutes_color != old_tuple:
+                self.turn_off()
+                print(f"Color: {self.color_on}")
+                self.show_il_est()
+                time.sleep(0.2)
+                self.show_hour(h)
+                time.sleep(0.3)
+                self.show_five_minutes(five_minutes)
+                time.sleep(0.3)
+                self.show_minutes_after_five_minutes(residual_minutes)
+            time.sleep(10)
 
     def show_hour(self, h: int):
         if h == 0:
