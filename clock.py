@@ -25,7 +25,7 @@ class Clock:
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
 
-        self.last_h_five_min_residual_minutes_color: tuple[int, int, tuple[int, int, int]] = (
+        self.last_h_five_min_residual_minutes_color: tuple[int, int, int, tuple[int, int, int]] = (
             0,
             0,
             0,
@@ -111,8 +111,8 @@ class Clock:
         returns the number of minutes after the last 5 minutes mark, between 0 and 4.
         So for example, if it's XX:17:30, it will return 2, because it's 2 minutes after the nearest 5 minutes mark which is XX:15:00.
         """
-        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
-        return int(floor(minutes % 5))
+        minutes =  self.time_provider.get_current_time().tm_min
+        return minutes - self.get_current_five_minutes()*5
     
 
     def run(self):
@@ -153,7 +153,8 @@ class Clock:
             old_tuple = self.last_h_five_min_residual_minutes_color
             self.last_h_five_min_residual_minutes_color = (h, five_minutes, residual_minutes, self.color_on)
 
-            print("now: ", self.last_h_five_min_residual_minutes_color, " old: ", old_tuple)
+            print(f"now: {self.last_h_five_min_residual_minutes_color[0]}h, 5 minutes: {self.last_h_five_min_residual_minutes_color[1]}, residual minutes: {self.last_h_five_min_residual_minutes_color[2]}, color: {self.last_h_five_min_residual_minutes_color[3]}")
+            print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
             if self.last_h_five_min_residual_minutes_color != old_tuple:
                 self.turn_off()
                 print(f"Color: {self.color_on}")
