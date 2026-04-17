@@ -114,6 +114,12 @@ class Clock:
         minutes =  self.time_provider.get_current_time().tm_min
         return minutes - self.get_current_five_minutes()*5
     
+    def get_am_pm(self) -> int:
+        """
+        returns 0 if it's before midday (AM), 1 if it's after midday (PM).
+        """
+        return 0 if self.time_provider.get_current_time().tm_hour < 12 else 1
+    
 
     def run(self):
         th = threading.Thread(target=self.run_loop)
@@ -168,6 +174,11 @@ class Clock:
                 self.show_hour(h)
                 time.sleep(0.3)
                 self.show_five_minutes(five_minutes)
+                time.sleep(0.3)
+                if self.get_am_pm() == 0:
+                    self.show_am()
+                else:
+                    self.show_pm()
             if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2]:
                 self.show_minutes_after_five_minutes(residual_minutes)
             time.sleep(5)
@@ -503,6 +514,17 @@ class Clock:
         to_turn_on.append((5, 10))
         return self.turn_on(to_turn_on)
 
+    def show_am(self):
+        to_turn_on = []
+        to_turn_on.append((9, 9))
+        to_turn_on.append((9, 10))
+        return self.turn_on(to_turn_on)
+
+    def show_pm(self):
+        to_turn_on = []
+        to_turn_on.append((9, 8))
+        to_turn_on.append((9, 10))
+        return self.turn_on(to_turn_on)
     # Minutes functions
     def show_moins(self):
         to_turn_on = []
