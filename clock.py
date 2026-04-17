@@ -316,14 +316,15 @@ class Clock:
         
     def to_physical_index(self, i: int, j: int) -> int:
         if i == -1:
-            if j == 1:
-                return int(self.n_leds_per_line * self.n_columns + 1)
-            elif j == 2:
-                return int(self.n_leds_per_line * self.n_columns + 2)
-            elif j == 3:
-                return int(self.n_leds_per_line * self.n_columns + 3)
-            elif j == 4:
-                return int(self.n_leds_per_line * self.n_columns)
+            return int(self.n_leds_per_line * self.n_columns + (j % 4))
+            # if j == 1:
+            #     return int(self.n_leds_per_line * self.n_columns + (j % 4))
+            # elif j == 2:
+            #     return int(self.n_leds_per_line * self.n_columns + 2)
+            # elif j == 3:
+            #     return int(self.n_leds_per_line * self.n_columns + 3)
+            # elif j == 4:
+            #     return int(self.n_leds_per_line * self.n_columns)
         if i % 2 == 0:
             return int(i * self.n_leds_per_line + j)
         else:
