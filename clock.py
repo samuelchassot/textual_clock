@@ -20,12 +20,12 @@ class Clock:
         # 4 leds are in the corners to indicate the current minute
         assert (len(led_array) - 4) % n_leds_per_line == 0
 
-        self.n_columns = (len(led_array) - 4) / n_leds_per_line
+        self.n_columns = (len(led_array) - 4) // n_leds_per_line
 
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
 
-        self.last_h_five_min_residual_minutes_color: tuple[int, int, tuple[int, int, int]] = (
+        self.last_h_five_min_residual_minutes_color: tuple[int, int, int, tuple[int, int, int]] = (
             0,
             0,
             0,
@@ -111,8 +111,8 @@ class Clock:
         returns the number of minutes after the last 5 minutes mark, between 0 and 4.
         So for example, if it's XX:17:30, it will return 2, because it's 2 minutes after the nearest 5 minutes mark which is XX:15:00.
         """
-        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
-        return int(floor(minutes % 5))
+        minutes =  self.time_provider.get_current_time().tm_min
+        return minutes - self.get_current_five_minutes()*5
     
 
     def run(self):
@@ -122,6 +122,25 @@ class Clock:
     def run_loop(self):
         print("Start of the clock")
         while True:
+            # print("turning off")
+            # self.turn_off()
+            # time.sleep(0.8)
+            # print("turning on")
+            # self.color_on = self.read_current_color()
+            
+            # for i in range(self.n_lines):
+            #     for j in range(self.n_leds_per_line):
+            #         # physical_index = to_physical_index(i, j, n_leds_per_line)
+            #         # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
+            #         self.turn_on([(i,j)])
+            #         time.sleep(0.5)
+            
+            # # turn on the 4 corners
+            # for i in range(1, 5):
+            #     self.turn_on([(-1,i)])
+            #     time.sleep(0.5)
+                
+            # time.sleep(2)
             h = self.get_current_hour()
             five_minutes = self.get_current_five_minutes()
             residual_minutes = self.get_current_minute_after_five_minutes()
@@ -131,10 +150,13 @@ class Clock:
                 h += 1
             self.color_on = self.read_current_color()
 
+            assert(residual_minutes >= 0 and residual_minutes < 5)
+
             old_tuple = self.last_h_five_min_residual_minutes_color
             self.last_h_five_min_residual_minutes_color = (h, five_minutes, residual_minutes, self.color_on)
 
-            print("now: ", self.last_h_five_min_residual_minutes_color, " old: ", old_tuple)
+            print(f"now: {self.last_h_five_min_residual_minutes_color[0]}h, 5 minutes: {self.last_h_five_min_residual_minutes_color[1]}, residual minutes: {self.last_h_five_min_residual_minutes_color[2]}, color: {self.last_h_five_min_residual_minutes_color[3]}")
+            print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
             if self.last_h_five_min_residual_minutes_color != old_tuple:
                 self.turn_off()
                 print(f"Color: {self.color_on}")
@@ -145,7 +167,7 @@ class Clock:
                 self.show_five_minutes(five_minutes)
                 time.sleep(0.3)
                 self.show_minutes_after_five_minutes(residual_minutes)
-            time.sleep(10)
+            time.sleep(5)
 
     def show_hour(self, h: int):
         if h == 0:
@@ -284,13 +306,29 @@ class Clock:
     #   110                                            113
 
     # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
+    # Use 
+    #         (-1, 1): top left 
+    #         (-1, 2): top right
+    #         (-1, 3): bottom right
+    #         (-1, 4): bottom left
+    #       
+    #       for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
+        
     def to_physical_index(self, i: int, j: int) -> int:
         if i == -1:
-            return self.n_leds_per_line * self.n_columns + 1 + (j % 4)
+            return int(self.n_leds_per_line * self.n_columns + (j % 4))
+            # if j == 1:
+            #     return int(self.n_leds_per_line * self.n_columns + (j % 4))
+            # elif j == 2:
+            #     return int(self.n_leds_per_line * self.n_columns + 2)
+            # elif j == 3:
+            #     return int(self.n_leds_per_line * self.n_columns + 3)
+            # elif j == 4:
+            #     return int(self.n_leds_per_line * self.n_columns)
         if i % 2 == 0:
-            return i * self.n_leds_per_line + j
+            return int(i * self.n_leds_per_line + j)
         else:
-            return i * self.n_leds_per_line + (self.n_leds_per_line - j - 1)
+            return int(i * self.n_leds_per_line + (self.n_leds_per_line - j - 1))
 
 
     def turn_off(self):
@@ -312,7 +350,13 @@ class Clock:
         for i, j in indices:
             index = self.to_physical_index(i, j)
             self.pixels[index] = self.color_on
-            debug_str += self.debug_characters[index]
+            if index >= 0 and index < len(self.debug_characters):
+                debug_str += self.debug_characters[index]
+            else:
+                if i == -1:
+                    debug_str += f"corner{j}"
+                else:
+                    debug_str += f"({i},{j})"
         return debug_str
 
     def show_il_est(self):
