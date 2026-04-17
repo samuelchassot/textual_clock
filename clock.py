@@ -334,7 +334,13 @@ class Clock:
         for i, j in indices:
             index = self.to_physical_index(i, j)
             self.pixels[index] = self.color_on
-            debug_str += self.debug_characters[index]
+            if index >= 0 and index < len(self.debug_characters):
+                debug_str += self.debug_characters[index]
+            else:
+                if i == -1:
+                    debug_str += f"corner{j}"
+                else:
+                    debug_str += f"({i},{j})"
         return debug_str
 
     def show_il_est(self):
