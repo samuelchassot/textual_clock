@@ -167,7 +167,7 @@ class Clock:
                 self.show_five_minutes(five_minutes)
                 time.sleep(0.3)
                 self.show_minutes_after_five_minutes(residual_minutes)
-            time.sleep(10)
+            time.sleep(5)
 
     def show_hour(self, h: int):
         if h == 0:
@@ -306,9 +306,24 @@ class Clock:
     #   110                                            113
 
     # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
+    # Use 
+    #         (-1, 1): top left 
+    #         (-1, 2): top right
+    #         (-1, 3): bottom right
+    #         (-1, 4): bottom left
+    #       
+    #       for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
+        
     def to_physical_index(self, i: int, j: int) -> int:
         if i == -1:
-            return int(self.n_leds_per_line * self.n_columns + 1 + (j % 4))
+            if j == 1:
+                return int(self.n_leds_per_line * self.n_columns + 1)
+            elif j == 2:
+                return int(self.n_leds_per_line * self.n_columns + 2)
+            elif j == 3:
+                return int(self.n_leds_per_line * self.n_columns + 3)
+            elif j == 4:
+                return int(self.n_leds_per_line * self.n_columns)
         if i % 2 == 0:
             return int(i * self.n_leds_per_line + j)
         else:
