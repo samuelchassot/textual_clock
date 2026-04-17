@@ -150,6 +150,8 @@ class Clock:
                 h += 1
             self.color_on = self.read_current_color()
 
+            assert(residual_minutes >= 0 and residual_minutes < 5)
+
             old_tuple = self.last_h_five_min_residual_minutes_color
             self.last_h_five_min_residual_minutes_color = (h, five_minutes, residual_minutes, self.color_on)
 
