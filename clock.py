@@ -4,8 +4,12 @@ import time
 import threading
 
 
+class TimeProvider:
+    def get_current_time(self) -> time.struct_time:
+        return  time.localtime()
 class Clock:
-    def __init__(self, n_leds_per_line, led_array) -> None:
+    def __init__(self, n_leds_per_line, led_array, time_provider: TimeProvider = TimeProvider()) -> None:
+        self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
         self.SEPARATOR = ";"
         self.DEFAULT_COLOR = (255, 255, 255)
@@ -16,7 +20,7 @@ class Clock:
         # 4 leds are in the corners to indicate the current minute
         assert (len(led_array) - 4) % n_leds_per_line == 0
 
-        self.n_lines = int((len(led_array) - 4) / n_leds_per_line)
+        self.n_columns = (len(led_array) - 4) / n_leds_per_line
 
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
@@ -51,7 +55,6 @@ class Clock:
             ["E", "T", "R", "Q", "U", "A", "R", "T", "P", "R", "D"],
             ["V", "I", "N", "G", "T", "-", "C", "I", "N", "Q", "U"],
             ["E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M"],
-            ["minute4", "minute1", "minute2", "minute3"]
         ]
         self.debug_characters: list[str] = [
             item for sub in self.debug_characters for item in sub
@@ -71,29 +74,44 @@ class Clock:
         """
         returns the current hour as an int, between 0 and 23, 0 is midnight.
         """
-        return time.localtime().tm_hour
+        return self.time_provider.get_current_time().tm_hour
 
     def get_current_nearest_quarter(self) -> int:
         """
         returns the nearest quarter, between 0 and 3.
         0 is the hour sharp, so betwee XX:52:30 and XX+1:07:29
         """
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
         return int((minutes + 7.5) // 15) % 4
+    
+    def get_current_quarter(self) -> int:
+        """
+        returns the current quarter, between 0 and 3.
+        0 is the hour sharp, so betwee XX:00:00 and XX:14:59, 1 is between XX:15:00 and XX:29:59, etc.
+        """
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
+        return int(minutes // 15) % 4
 
     def get_current_nearest_five_minutes(self) -> int:
         """
         returns the nearest 5 minutes mark, between 0 and 11.
         0 is the hour sharp, so between XX:57:30 and XX+1:02:29"""
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
         return int((minutes + 2.5) // 5) % 12
+    
+    def get_current_five_minutes(self) -> int:
+        """
+        returns the nearest 5 minutes mark, between 0 and 11.
+        0 is the hour sharp, so between XX:00:00 and XX:04:59, 1 is between XX:05:00 and XX:09:59, etc. """
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
+        return int(minutes // 5) % 12
     
     def get_current_minute_after_five_minutes(self) -> int:
         """
         returns the number of minutes after the last 5 minutes mark, between 0 and 4.
         So for example, if it's XX:17:30, it will return 2, because it's 2 minutes after the nearest 5 minutes mark which is XX:15:00.
         """
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
         return int(floor(minutes % 5))
     
 
@@ -124,7 +142,7 @@ class Clock:
                 
             # time.sleep(2)
             h = self.get_current_hour()
-            five_minutes = self.get_current_nearest_five_minutes()
+            five_minutes = self.get_current_five_minutes()
             residual_minutes = self.get_current_minute_after_five_minutes()
 
             # Because we show "25 to 10" for 9:35 for example
@@ -198,7 +216,6 @@ class Clock:
         elif h == 12:
             self.show_midi()
             time.sleep(0.4)
-            self.show_heures()
 
     def show_five_minutes(self, c: int):
         if c == 0:
@@ -288,7 +305,7 @@ class Clock:
     # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
     def to_physical_index(self, i: int, j: int) -> int:
         if i == -1:
-            return self.n_leds_per_line * self.n_lines + int(j % 4)
+            return self.n_leds_per_line * self.n_columns + 1 + (j % 4)
         if i % 2 == 0:
             return i * self.n_leds_per_line + j
         else:
@@ -313,7 +330,6 @@ class Clock:
         debug_str = ""
         for i, j in indices:
             index = self.to_physical_index(i, j)
-            print(f"Turning on LED at line {i}, column {j} (physical index {index})")
             self.pixels[index] = self.color_on
             debug_str += self.debug_characters[index]
         return debug_str
@@ -538,7 +554,7 @@ class Clock:
     def test_leds_column_per_column(self):
         for j in range(self.n_leds_per_line):
             to_turn_on = []
-            for i in range(self.n_lines):
+            for i in range(self.n_columns):
                 to_turn_on.append((i, j))
             self.turn_on(to_turn_on)
             time.sleep(0.5)
