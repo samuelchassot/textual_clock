@@ -88,5 +88,5 @@ if __name__ == "__main__":
     n_leds = n_leds_per_line * 10 + 4 # 10 lines of 11 LEDs + 4 LEDs for the minutes in the corners
     pixels = neopixel.NeoPixel(board.D18, n_leds)
     clk = clock.Clock(n_leds_per_line, pixels)
-    clk.run()
+    clk.run(refresh_rate_seconds=5, delay_between_words_seconds=0.2)
     app.run(host=HOST, port=PORT)
