@@ -233,6 +233,9 @@ class Clock:
         elif h == 12:
             self.show_midi()
             time.sleep(0.4)
+        elif h == 24 or h == 0:
+            self.show_minuit()
+            time.sleep(0.4)
 
     def show_five_minutes(self, c: int):
         if c == 0:
