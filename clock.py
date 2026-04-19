@@ -6,7 +6,7 @@ import threading
 
 class TimeProvider:
     def get_current_time(self) -> time.struct_time:
-        return  time.localtime()
+        return time.localtime()
 class Clock:
     def __init__(self, n_leds_per_line, led_array, time_provider: TimeProvider = TimeProvider()) -> None:
         self.time_provider = time_provider
