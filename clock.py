@@ -4,8 +4,12 @@ import time
 import threading
 
 
+class TimeProvider:
+    def get_current_time(self) -> time.struct_time:
+        return time.localtime()
 class Clock:
-    def __init__(self, n_leds_per_line, led_array) -> None:
+    def __init__(self, n_leds_per_line, led_array, time_provider: TimeProvider = TimeProvider()) -> None:
+        self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
         self.SEPARATOR = ";"
         self.DEFAULT_COLOR = (255, 255, 255)
@@ -16,12 +20,12 @@ class Clock:
         # 4 leds are in the corners to indicate the current minute
         assert (len(led_array) - 4) % n_leds_per_line == 0
 
-        self.n_columns = (len(led_array) - 4) / n_leds_per_line
+        self.n_columns = (len(led_array) - 4) // n_leds_per_line
 
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
 
-        self.last_h_five_min_residual_minutes_color: tuple[int, int, tuple[int, int, int]] = (
+        self.last_h_five_min_residual_minutes_color: tuple[int, int, int, tuple[int, int, int]] = (
             0,
             0,
             0,
@@ -70,41 +74,84 @@ class Clock:
         """
         returns the current hour as an int, between 0 and 23, 0 is midnight.
         """
-        return time.localtime().tm_hour
+        return self.time_provider.get_current_time().tm_hour
 
     def get_current_nearest_quarter(self) -> int:
         """
         returns the nearest quarter, between 0 and 3.
         0 is the hour sharp, so betwee XX:52:30 and XX+1:07:29
         """
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
         return int((minutes + 7.5) // 15) % 4
+    
+    def get_current_quarter(self) -> int:
+        """
+        returns the current quarter, between 0 and 3.
+        0 is the hour sharp, so betwee XX:00:00 and XX:14:59, 1 is between XX:15:00 and XX:29:59, etc.
+        """
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
+        return int(minutes // 15) % 4
 
     def get_current_nearest_five_minutes(self) -> int:
         """
         returns the nearest 5 minutes mark, between 0 and 11.
         0 is the hour sharp, so between XX:57:30 and XX+1:02:29"""
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
         return int((minutes + 2.5) // 5) % 12
+    
+    def get_current_five_minutes(self) -> int:
+        """
+        returns the nearest 5 minutes mark, between 0 and 11.
+        0 is the hour sharp, so between XX:00:00 and XX:04:59, 1 is between XX:05:00 and XX:09:59, etc. """
+        minutes =  self.time_provider.get_current_time().tm_min +  self.time_provider.get_current_time().tm_sec / 60.0
+        return int(minutes // 5) % 12
     
     def get_current_minute_after_five_minutes(self) -> int:
         """
         returns the number of minutes after the last 5 minutes mark, between 0 and 4.
         So for example, if it's XX:17:30, it will return 2, because it's 2 minutes after the nearest 5 minutes mark which is XX:15:00.
         """
-        minutes = time.localtime().tm_min + time.localtime().tm_sec / 60.0
-        return int(floor(minutes % 5))
+        minutes =  self.time_provider.get_current_time().tm_min
+        return minutes - self.get_current_five_minutes()*5
+    
+    def get_am_pm(self) -> int:
+        """
+        returns 0 if it's before midday (AM), 1 if it's after midday (PM).
+        """
+        return 0 if self.time_provider.get_current_time().tm_hour < 12 else 1
     
 
     def run(self):
         th = threading.Thread(target=self.run_loop)
         th.start()
 
+    def anything_changed_except_corners(self, old_tuple: tuple[int, int, int, tuple[int, int, int]]) -> bool:
+        return self.last_h_five_min_residual_minutes_color[0] != old_tuple[0] or self.last_h_five_min_residual_minutes_color[1] != old_tuple[1] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] 
+
     def run_loop(self):
         print("Start of the clock")
         while True:
+            # print("turning off")
+            # self.turn_off_all()
+            # time.sleep(0.8)
+            # print("turning on")
+            # self.color_on = self.read_current_color()
+            
+            # for i in range(self.n_lines):
+            #     for j in range(self.n_leds_per_line):
+            #         # physical_index = to_physical_index(i, j, n_leds_per_line)
+            #         # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
+            #         self.turn_on([(i,j)])
+            #         time.sleep(0.5)
+            
+            # # turn on the 4 corners
+            # for i in range(1, 5):
+            #     self.turn_on([(-1,i)])
+            #     time.sleep(0.5)
+                
+            # time.sleep(2)
             h = self.get_current_hour()
-            five_minutes = self.get_current_nearest_five_minutes()
+            five_minutes = self.get_current_five_minutes()
             residual_minutes = self.get_current_minute_after_five_minutes()
 
             # Because we show "25 to 10" for 9:35 for example
@@ -112,12 +159,15 @@ class Clock:
                 h += 1
             self.color_on = self.read_current_color()
 
+            assert(residual_minutes >= 0 and residual_minutes < 5)
+
             old_tuple = self.last_h_five_min_residual_minutes_color
             self.last_h_five_min_residual_minutes_color = (h, five_minutes, residual_minutes, self.color_on)
 
-            print("now: ", self.last_h_five_min_residual_minutes_color, " old: ", old_tuple)
-            if self.last_h_five_min_residual_minutes_color != old_tuple:
-                self.turn_off()
+            print(f"now: {self.last_h_five_min_residual_minutes_color[0]}h, 5 minutes: {self.last_h_five_min_residual_minutes_color[1]}, residual minutes: {self.last_h_five_min_residual_minutes_color[2]}, color: {self.last_h_five_min_residual_minutes_color[3]}")
+            print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
+            if self.anything_changed_except_corners(old_tuple):
+                self.turn_off_all()
                 print(f"Color: {self.color_on}")
                 self.show_il_est()
                 time.sleep(0.2)
@@ -125,8 +175,13 @@ class Clock:
                 time.sleep(0.3)
                 self.show_five_minutes(five_minutes)
                 time.sleep(0.3)
+                # if self.get_am_pm() == 0:
+                #     self.show_am()
+                # else:
+                #     self.show_pm()
+            if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2]:
                 self.show_minutes_after_five_minutes(residual_minutes)
-            time.sleep(10)
+            time.sleep(5)
 
     def show_hour(self, h: int):
         if h == 0:
@@ -178,7 +233,9 @@ class Clock:
         elif h == 12:
             self.show_midi()
             time.sleep(0.4)
-            self.show_heures()
+        elif h == 24 or h == 0:
+            self.show_minuit()
+            time.sleep(0.4)
 
     def show_five_minutes(self, c: int):
         if c == 0:
@@ -266,17 +323,39 @@ class Clock:
     #   110                                            113
 
     # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
+    # Use 
+    #         (-1, 1): top left 
+    #         (-1, 2): top right
+    #         (-1, 3): bottom right
+    #         (-1, 4): bottom left
+    #       
+    #       for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
+        
     def to_physical_index(self, i: int, j: int) -> int:
         if i == -1:
-            return self.n_leds_per_line * self.n_columns + 1 + (j % 4)
+            return int(self.n_leds_per_line * self.n_columns + (j % 4))
+            # if j == 1:
+            #     return int(self.n_leds_per_line * self.n_columns + (j % 4))
+            # elif j == 2:
+            #     return int(self.n_leds_per_line * self.n_columns + 2)
+            # elif j == 3:
+            #     return int(self.n_leds_per_line * self.n_columns + 3)
+            # elif j == 4:
+            #     return int(self.n_leds_per_line * self.n_columns)
         if i % 2 == 0:
-            return i * self.n_leds_per_line + j
+            return int(i * self.n_leds_per_line + j)
         else:
-            return i * self.n_leds_per_line + (self.n_leds_per_line - j - 1)
+            return int(i * self.n_leds_per_line + (self.n_leds_per_line - j - 1))
 
 
-    def turn_off(self):
+    def turn_off_all(self):
         self.pixels.fill(self.color_off)
+    
+    def turn_off(self, indices: list[tuple[int, int]]):
+        for i, j in indices:
+            index = self.to_physical_index(i, j)
+            self.pixels[index] = self.color_off
+
 
     def turn_on(self, indices: list[tuple[int, int]]):
         """Turn on the LEDs at the positions given by the tuples in the list. The tuple gives the line then the column.
@@ -294,7 +373,13 @@ class Clock:
         for i, j in indices:
             index = self.to_physical_index(i, j)
             self.pixels[index] = self.color_on
-            debug_str += self.debug_characters[index]
+            if index >= 0 and index < len(self.debug_characters):
+                debug_str += self.debug_characters[index]
+            else:
+                if i == -1:
+                    debug_str += f"corner{j}"
+                else:
+                    debug_str += f"({i},{j})"
         return debug_str
 
     def show_il_est(self):
@@ -432,6 +517,17 @@ class Clock:
         to_turn_on.append((5, 10))
         return self.turn_on(to_turn_on)
 
+    def show_am(self):
+        to_turn_on = []
+        to_turn_on.append((9, 9))
+        to_turn_on.append((9, 10))
+        return self.turn_on(to_turn_on)
+
+    def show_pm(self):
+        to_turn_on = []
+        to_turn_on.append((9, 8))
+        to_turn_on.append((9, 10))
+        return self.turn_on(to_turn_on)
     # Minutes functions
     def show_moins(self):
         to_turn_on = []
@@ -502,6 +598,7 @@ class Clock:
         return self.turn_on(to_turn_on)
     
     def show_minutes_after_five_minutes(self, c: int):
+        self.turn_off([(-1, 1), (-1, 2), (-1, 3), (-1, 4)])
         to_turn_on = []
         if c >= 1:
             to_turn_on.append((-1, 1))
@@ -522,5 +619,4 @@ class Clock:
             self.turn_on(to_turn_on)
             time.sleep(0.5)
         time.sleep(2)
-        self.turn_off()
-
+        self.turn_off_all()

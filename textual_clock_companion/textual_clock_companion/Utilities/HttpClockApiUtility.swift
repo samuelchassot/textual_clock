@@ -19,6 +19,9 @@ struct RgbColor: Encodable, Decodable {
         let arrRgb = UIColor(uiColor).cgColor.components!
         return RgbColor(color_r: Int(arrRgb[0]*255.0), color_g: Int(arrRgb[1]*255), color_b: Int(arrRgb[2]*255))
     }
+    func toString() -> String {
+        return "rgb(\(color_r),\(color_g),\(color_b))"
+    }
 }
 
 struct LivenessMessage: Decodable {
@@ -34,32 +37,47 @@ struct HttpClockApiUtility {
             onError("Cannot encode the given payload!")
             return
         }
-        print(try? JSONDecoder().decode(RgbColor.self, from: payload!))
-        let url = URL(string: "http://\(clockAddress)/color")!
-        var urlRequest = URLRequest(url: url)
-        urlRequest.timeoutInterval = 3
-        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpMethod = "POST"
-        urlRequest.httpBody = payload
-        sendRequest(request: urlRequest, onSuccess: {(data) in
-            onSuccess("Color update successful!")
-        }, onError: onError)
+        if let decodedColor = try? JSONDecoder().decode(RgbColor.self, from: payload!) {
+            print(decodedColor.toString())
+        } else {
+            print("UNSET")
+        }
+        let urlString = "http://\(clockAddress)/color"
+        let urlO = URL(string: urlString)
+        if let url = urlO {
+            var urlRequest = URLRequest(url: url)
+            urlRequest.timeoutInterval = 3
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpMethod = "POST"
+            urlRequest.httpBody = payload
+            sendRequest(request: urlRequest, onSuccess: {(data) in
+                onSuccess("Color update successful!")
+            }, onError: onError)
+        } else {
+            onError("Cannot connect to URL: \(urlString))")
+        }
         
     }
     static func getCurrentColor(clockAddress: String, onSuccess: @escaping (RgbColor) -> Void, onError: @escaping (String) -> Void) -> Void {
-        let url = URL(string: "http://\(clockAddress)/color")!
-        var urlRequest = URLRequest(url: url)
-        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpMethod = "GET"
-        sendRequest(request: urlRequest, onSuccess: {(data) in
-            let rgbColor = try? JSONDecoder().decode(RgbColor.self, from: data)
-            if(rgbColor == nil){
-                onError("Cannot decode the received color!")
-            }else{
-                onSuccess(rgbColor!)
-            }
-            
-        }, onError: onError)
+        let urlString = "http://\(clockAddress)/color"
+        let urlO = URL(string: urlString)
+        if let url = urlO {
+            var urlRequest = URLRequest(url: url)
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpMethod = "GET"
+            sendRequest(request: urlRequest, onSuccess: {(data) in
+                let rgbColor = try? JSONDecoder().decode(RgbColor.self, from: data)
+                if(rgbColor == nil){
+                    onError("Cannot decode the received color!")
+                }else{
+                    onSuccess(rgbColor!)
+                }
+                
+            }, onError: onError)
+        } else {
+            onError("Cannot connect to URL: \(urlString))")
+        }
+        
     }
     
     static func sendRebootCommand(clockAddress: String,onSuccess: @escaping (String) -> Void, onError: @escaping (String) -> Void){
@@ -68,28 +86,38 @@ struct HttpClockApiUtility {
             onError("Cannot encode the json payload!")
             return
         }
-        let url = URL(string: "http://\(clockAddress)/reboot")!
-        var urlRequest = URLRequest(url: url)
-        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpMethod = "POST"
-        sendRequest(request: urlRequest, onSuccess: {(data) in
-            onSuccess("Reboot command sent!")
-        }, onError: onError)
+        let urlString = "http://\(clockAddress)/reboot"
+        let urlO = URL(string: urlString)
+        if let url = urlO {
+            var urlRequest = URLRequest(url: url)
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpMethod = "POST"
+            sendRequest(request: urlRequest, onSuccess: {(data) in
+                onSuccess("Reboot command sent!")
+            }, onError: onError)
+        } else {
+            onError("Cannot create url for \(urlString)")
+        }
     }
     
     static func checkLiveness(clockAddress: String, onSuccess: @escaping (LivenessMessage) -> Void, onError: @escaping (String) -> Void) -> Void {
-        let url = URL(string: "http://\(clockAddress)/liveness")!
-        var urlRequest = URLRequest(url: url)
-        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpMethod = "GET"
-        sendRequest(request: urlRequest, onSuccess: {(data) in
-            let msg = try? JSONDecoder().decode(LivenessMessage.self, from: data)
-            if(msg == nil){
-                onError("Cannot decode the received liveness message!")
-            }else{
-                onSuccess(msg!)
-            }
-        }, onError: onError)
+        let urlString = "http://\(clockAddress)/liveness"
+        let urlO = URL(string: urlString)
+        if let url = urlO {
+            var urlRequest = URLRequest(url: url)
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpMethod = "GET"
+            sendRequest(request: urlRequest, onSuccess: {(data) in
+                let msg = try? JSONDecoder().decode(LivenessMessage.self, from: data)
+                if(msg == nil){
+                    onError("Cannot decode the received liveness message!")
+                }else{
+                    onSuccess(msg!)
+                }
+            }, onError: onError)
+        } else {
+            onError("Cannot create url for \(urlString)")
+        }
     }
     
     private static func sendRequest(request:URLRequest, onSuccess: @escaping (Data) -> Void, onError: @escaping (String) -> Void){
@@ -112,3 +140,4 @@ struct HttpClockApiUtility {
     }
     
 }
+
