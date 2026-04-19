@@ -1,7 +1,6 @@
 from math import floor
 import random
 import time
-import threading
 
 
 class TimeProvider:
@@ -119,11 +118,6 @@ class Clock:
         returns 0 if it's before midday (AM), 1 if it's after midday (PM).
         """
         return 0 if self.time_provider.get_current_time().tm_hour < 12 else 1
-    
-
-    def run(self, refresh_rate_seconds: int = 5, delay_between_words_seconds: float = 0.2):
-        th = threading.Thread(target=self.run_loop, args=(refresh_rate_seconds, delay_between_words_seconds))
-        th.start()
 
     def anything_changed_except_corners(self, old_tuple: tuple[int, int, int, tuple[int, int, int]]) -> bool:
         return self.last_h_five_min_residual_minutes_color[0] != old_tuple[0] or self.last_h_five_min_residual_minutes_color[1] != old_tuple[1] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] 
