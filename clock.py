@@ -75,9 +75,7 @@ class Clock:
                 rgb = l.split(self.SEPARATOR)
                 return (int(rgb[0]), int(rgb[1]), int(rgb[2]))
         except Exception as e:
-            print("ERROR: cannot read the current color!\n", e)
-            with open(self.CURRENT_COLOR_FILE_PATH, "w") as f:
-                f.write(self.DEFAULT_COLOR)
+            print("WARNING: cannot read the current color! Using default color.\n", e)
             return self.DEFAULT_COLOR
         
     def load_special_time_periods(self):
