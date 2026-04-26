@@ -5,8 +5,9 @@ cd /home/chsa/textual_clock/
 # check 4 times with a 5 second interval
 i=0
 INTERNET_ACTIVE=0
+
 while [ $i -lt 4 ]; do
-  if ping -c 1 google.com; then
+  if ping -c 1 google.com >/dev/null 2>&1; then
     echo "Internet is up. Proceeding..."
     INTERNET_ACTIVE=1
     break
@@ -23,14 +24,19 @@ done
 # Check if a venv already exists, if not create one
 if [ ! -d "venv" ]; then
   echo "Creating virtual environment..."
-  sudo python3 -m venv venv
+  python3 -m venv venv
 fi
 
+# Activate venv
+source venv/bin/activate
+
 if [ $INTERNET_ACTIVE -eq 1 ]; then
-  echo "Internet connection established. Running the clock application..."
+  echo "Internet connection established. Running updates..."
   git pull
-  sudo ./venv/bin/pip3 install -r requirements.txt
+  pip install -r requirements.txt
 else
-  echo "No internet connection after multiple attempts. Running the clock application without updates..."
+  echo "No internet connection. Skipping updates..."
 fi
-sudo ./venv/bin/python3 clock_app.py
+
+# Run app as root (ONLY here)
+exec sudo venv/bin/python clock_app.py
