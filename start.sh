@@ -27,9 +27,6 @@ if [ ! -d "venv" ]; then
   python3 -m venv venv
 fi
 
-# Activate venv
-source venv/bin/activate
-
 if [ $INTERNET_ACTIVE -eq 1 ]; then
   echo "Internet connection established. Running updates..."
   git pull
