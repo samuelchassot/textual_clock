@@ -22,8 +22,8 @@ The branches `raspberry_xx` contain only the code for each raspberry. They are i
       Type=simple
       Restart=always
       RestartSec=1
-      User=<username>
-      ExecStart=sudo sh /home/<username>/textual_clock/start.sh
+      User=Root // or omit it entirely
+      ExecStart=sh /home/<username>/textual_clock/start.sh
 
       [Install]
       WantedBy=multi-user.target
