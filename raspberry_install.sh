@@ -1,6 +1,18 @@
-sudo apt-get update
-sudo apt-get install python3-pip
-sudo apt-get install python3-venv
-sudo apt install python3-rpi-lgpio python3-lgpio
-sudo apt install swig build-essential python3-dev
-sudo apt install git
+sudo apt update
+sudo apt install -y \
+python3-venv python3-pip python3-dev \
+build-essential swig git \
+python3-lgpio python3-rpi-lgpio
+
+git clone https://github.com/samuelchassot/textual_clock.git
+
+cd ~/textual_clock
+
+python3 -m venv venv --system-site-packages
+
+pip install \
+rpi_ws281x==5.0.0 \
+adafruit-circuitpython-neopixel==6.3.21 \
+adafruit-blinka==9.1.0
+
+pip install -r requirements.txt
