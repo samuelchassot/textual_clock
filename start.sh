@@ -33,7 +33,7 @@ source venv/bin/activate
 if [ $INTERNET_ACTIVE -eq 1 ]; then
   echo "Internet connection established. Running updates..."
   git pull
-  pip install -r requirements.txt
+  ./venv/bin/pip install -r requirements.txt
 else
   echo "No internet connection. Skipping updates..."
 fi
