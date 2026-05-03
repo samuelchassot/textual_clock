@@ -12,7 +12,7 @@ The branches `raspberry_xx` contain only the code for each raspberry. They are i
 4. clone this repo in the home folder
 5. create a systemd service to run the `start.sh` script at startup:
    1. create a file `textual_clock.service` in `/etc/systemd/system/` with the following content (replace `<username>` with your username):
-      ```
+```
 [Unit]
 Description=Clock service
 After=network.target
@@ -27,7 +27,7 @@ ExecStart=sh /home/<username>/textual_clock/start.sh
 
 [Install]
 WantedBy=multi-user.target
-      ```
+```
    2. enable the service with `sudo systemctl enable textual_clock.service`
 6. setup the scheduled reboot:
    1. execute `sudo crontab -e`
