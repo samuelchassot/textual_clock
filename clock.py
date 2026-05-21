@@ -28,7 +28,7 @@ class Clock:
         # 4 leds are in the corners to indicate the current minute
         assert (len(led_array) - 4) % n_leds_per_line == 0
 
-        self.n_columns = (len(led_array) - 4) // n_leds_per_line
+        self.n_lines = (len(led_array) - 4) // n_leds_per_line
 
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
@@ -169,7 +169,7 @@ class Clock:
         time.sleep(0.8)
         print("turning on")
         self.color_on = self.read_current_color()
-        
+
         for i in range(self.n_lines):
             for j in range(self.n_leds_per_line):
                 # physical_index = to_physical_index(i, j, n_leds_per_line)
@@ -372,15 +372,15 @@ class Clock:
         
     def to_physical_index(self, i: int, j: int) -> int:
         if i == -1:
-            return int(self.n_leds_per_line * self.n_columns + (j % 4))
+            return int(self.n_leds_per_line * self.n_lines + (j % 4))
             # if j == 1:
-            #     return int(self.n_leds_per_line * self.n_columns + (j % 4))
+            #     return int(self.n_leds_per_line * self.n_lines + (j % 4))
             # elif j == 2:
-            #     return int(self.n_leds_per_line * self.n_columns + 2)
+            #     return int(self.n_leds_per_line * self.n_lines + 2)
             # elif j == 3:
-            #     return int(self.n_leds_per_line * self.n_columns + 3)
+            #     return int(self.n_leds_per_line * self.n_lines + 3)
             # elif j == 4:
-            #     return int(self.n_leds_per_line * self.n_columns)
+            #     return int(self.n_leds_per_line * self.n_lines)
         if i % 2 == 0:
             return int(i * self.n_leds_per_line + j)
         else:
@@ -653,7 +653,7 @@ class Clock:
     def test_leds_column_per_column(self):
         for j in range(self.n_leds_per_line):
             to_turn_on = []
-            for i in range(self.n_columns):
+            for i in range(self.n_lines):
                 to_turn_on.append((i, j))
             self.turn_on(to_turn_on)
             time.sleep(0.5)
