@@ -219,7 +219,7 @@ class Clock:
             #     self.show_am()
             # else:
             #     self.show_pm()
-        if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2]:
+        if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3]:
             self.show_minutes_after_five_minutes(residual_minutes)
 
     def show_hour(self, h: int):
