@@ -22,6 +22,9 @@ struct RgbColor: Encodable, Decodable {
     func toString() -> String {
         return "rgb(\(color_r),\(color_g),\(color_b))"
     }
+    func applyBrightness(brightness:CGFloat) -> RgbColor {
+        return RgbColor(color_r: Int(Double(color_r)*Double(brightness)), color_g: Int(Double(color_g)*Double(brightness)), color_b: Int(Double(color_b)*Double(brightness)))
+    }
 }
 
 struct LivenessMessage: Decodable {
@@ -37,6 +40,7 @@ struct HttpClockApiUtility {
             onError("Cannot encode the given payload!")
             return
         }
+        print("Sending color: \(color)")
         if let decodedColor = try? JSONDecoder().decode(RgbColor.self, from: payload!) {
             print(decodedColor.toString())
         } else {

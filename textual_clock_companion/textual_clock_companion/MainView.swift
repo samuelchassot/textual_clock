@@ -13,6 +13,8 @@ struct MainView: View {
     @State private var selectedColor =
     Color(.sRGB, red: 0.98, green: 0.9, blue: 0.2)
     
+    @State private var selectedBrightness = 0.9 //between 0.0 and 1.0
+    
     @State private var clockAddress = "raspberry"
     
     @State private var showSettings = false
@@ -30,7 +32,15 @@ struct MainView: View {
                     .scaleEffect(CGSize(width: 2, height: 2))
                     .labelsHidden()
                     .padding([.top, .leading, .trailing])
-                
+                Spacer()
+                Text("Select a brightness:")
+                Slider(value: $selectedBrightness, in: 0.0...1.0) {
+                    Text("")
+                } minimumValueLabel: {
+                    Text("0%")
+                } maximumValueLabel: {
+                    Text("100%")
+                }.frame(width: 250)
                 Spacer()
                 
                 Button(action: self.updateColorButton){
@@ -134,7 +144,7 @@ struct MainView: View {
     
     private func updateColor(color: Color) -> Void{
         print("update")
-        let rgbColor = RgbColor.fromUIColor(uiColor: color)
+        let rgbColor = RgbColor.fromUIColor(uiColor: color).applyBrightness(brightness: selectedBrightness)
         self.applyColorState = .loading
         HttpClockApiUtility.sendColorUpdate(clockAddress: self.clockAddress, color: rgbColor, onSuccess: {(msg) in
             self.showApplyColorResult(temporary_state: .success)
@@ -186,3 +196,4 @@ struct MainView_Previews: PreviewProvider {
         MainView()
     }
 }
+
