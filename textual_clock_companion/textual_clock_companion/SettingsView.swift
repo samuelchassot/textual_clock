@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var clock_address = ""
     @State private var clock_port = ""
     @State private var connectionTestState = ConnectionTestState.base
+    @State private var clockTestState = ClockTestState.base
     
     @ObservedObject var keyboard = KeyboardResponder()
     var body: some View {
@@ -85,6 +86,44 @@ struct SettingsView: View {
                     }
                 }
                 Spacer()
+                Button(action: self.testClock){
+                    if(self.clockTestState == .success){
+                        Image(systemName: "checkmark")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.green)
+                            .cornerRadius(15)
+                    } else if(self.clockTestState == .failure){
+                        Image(systemName: "xmark")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.red)
+                            .cornerRadius(15)
+                    } else if (self.clockTestState == .loading){
+                        Image(systemName: "arrow.2.circlepath")
+                            .resizable()
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 50, height: 50)
+                            .background(Color.orange)
+                            .cornerRadius(15)
+                            .rotationEffect(.degrees(360))
+                    }else{
+                        Text("Test mode clock")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.orange)
+                            .cornerRadius(15)
+                    }
+                }
+                Spacer()
             }.navigationBarTitle("Settings")
         }.onAppear{
             self.loadSettings()
@@ -105,10 +144,27 @@ struct SettingsView: View {
         })
     }
     
+    private func testClock(){
+        self.clockTestState = .loading
+        let clockAddress = self.clock_address + ":" + self.clock_port
+        HttpClockApiUtility.sendTestCommand(clockAddress: clockAddress, onSuccess: {(msg) in
+            self.showClockTestState(temporary_state: .success)
+        }, onError: {(errorMsg) in
+            print("error")
+            self.showClockTestState(temporary_state: .failure)
+        })
+    }
+    
     private func showTestState(temporary_state: ConnectionTestState){
         self.connectionTestState = temporary_state
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.connectionTestState = .base
+        }
+    }
+    private func showClockTestState(temporary_state: ClockTestState){
+        self.clockTestState = temporary_state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.clockTestState = .base
         }
     }
     private func loadSettings() {
@@ -137,6 +193,13 @@ struct SettingsView: View {
     }
     
     enum ConnectionTestState{
+        case base;
+        case loading;
+        case success;
+        case failure;
+    }
+    
+    enum ClockTestState{
         case base;
         case loading;
         case success;

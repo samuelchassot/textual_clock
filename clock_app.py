@@ -28,6 +28,13 @@ def restart():
     os.system("sudo reboot")
     return "Rebooting..."
 
+@app.route("/test", methods=["POST"])
+def test():
+    with open("test.txt", "w") as f:
+        f.write("Testing!")
+        f.close()
+    return "Starting test mode..."
+
 
 @app.route("/color", methods=["GET"])
 def color_get():

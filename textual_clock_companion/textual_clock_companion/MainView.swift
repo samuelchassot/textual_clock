@@ -13,7 +13,7 @@ struct MainView: View {
     @State private var selectedColor =
     Color(.sRGB, red: 0.98, green: 0.9, blue: 0.2)
     
-    @State private var selectedBrightness = 0.9 //between 0.0 and 1.0
+    @State private var selectedBrightness = 1.0 //between 0.0 and 1.0
     
     @State private var clockAddress = "raspberry"
     
@@ -171,7 +171,9 @@ struct MainView: View {
     private func getCurrentClockColor(){
         HttpClockApiUtility.getCurrentColor(clockAddress: self.clockAddress, onSuccess: {(rgbColor) in
             self.selectedColor = RgbColor.toUIColor(rgbColor: rgbColor)
+            self.selectedBrightness = 1.0
         }, onError: {(errorMsg) in
+            self.selectedBrightness = 1.0
             self.selectedColor = Color(.sRGB, red: 0.98, green: 0.9, blue: 0.2)
         })
     }

@@ -1,4 +1,5 @@
 from math import floor
+import os
 import random
 import time
 
@@ -162,27 +163,44 @@ class Clock:
         while True:
             self.update_clock(delay_between_words_seconds)
             time.sleep(refresh_rate_seconds)
+
+    def test_loop(self):
+        print("turning off")
+        self.turn_off_all()
+        time.sleep(0.8)
+        print("turning on")
+        self.color_on = self.read_current_color()
+
+        for i in range(self.n_lines):
+            for j in range(self.n_leds_per_line):
+                # physical_index = to_physical_index(i, j, n_leds_per_line)
+                # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
+                self.turn_on([(i,j)])
+                time.sleep(0.5)
+        
+        # turn on the 4 corners
+        for i in range(1, 5):
+            self.turn_on([(-1,i)])
+            time.sleep(0.5)
+            
+        time.sleep(2)
+        self.turn_off_all()
+        time.sleep(0.8)
+        for i in range(10):
+            self.turn_on_all(self.color_on)
+            time.sleep(0.8)
+            self.turn_off_all()
+            time.sleep(0.8)
            
     def update_clock(self, delay_between_words_seconds: float = 0.2):
-        # print("turning off")
-        # self.turn_off_all()
-        # time.sleep(0.8)
-        # print("turning on")
-        # self.color_on = self.read_current_color()
-
-        # for i in range(self.n_lines):
-        #     for j in range(self.n_leds_per_line):
-        #         # physical_index = to_physical_index(i, j, n_leds_per_line)
-        #         # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
-        #         self.turn_on([(i,j)])
-        #         time.sleep(0.5)
-        
-        # # turn on the 4 corners
-        # for i in range(1, 5):
-        #     self.turn_on([(-1,i)])
-        #     time.sleep(0.5)
-            
-        # time.sleep(2)
+        # check if file test.txt exists
+        tested = False
+        if os.path.exists("test.txt"):
+            print("Test mode activated!")
+            self.test_loop()
+            os.remove("test.txt")
+            self.turn_off_all()
+            tested = True
         h = self.get_current_hour()
         five_minutes = self.get_current_five_minutes()
         residual_minutes = self.get_current_minute_after_five_minutes()
@@ -206,7 +224,7 @@ class Clock:
 
         print(f"now: {self.last_h_five_min_residual_minutes_color[0]}h, 5 minutes: {self.last_h_five_min_residual_minutes_color[1]}, residual minutes: {self.last_h_five_min_residual_minutes_color[2]}, color: {self.last_h_five_min_residual_minutes_color[3]}")
         print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
-        if self.anything_changed_except_corners(old_tuple):
+        if self.anything_changed_except_corners(old_tuple) or tested:
             self.turn_off_all()
             print(f"Color: {self.color_on}")
             self.show_il_est()
@@ -219,7 +237,7 @@ class Clock:
             #     self.show_am()
             # else:
             #     self.show_pm()
-        if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3]:
+        if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
             self.show_minutes_after_five_minutes(residual_minutes)
 
     def show_hour(self, h: int):
@@ -389,6 +407,9 @@ class Clock:
 
     def turn_off_all(self):
         self.pixels.fill(self.color_off)
+    
+    def turn_on_all(self, color: tuple[int, int, int]):
+        self.pixels.fill(color)
     
     def turn_off(self, indices: list[tuple[int, int]]):
         for i, j in indices:
