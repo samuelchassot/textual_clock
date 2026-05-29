@@ -11,8 +11,9 @@ struct SettingsView: View {
     @Environment(\.managedObjectContext) var managedObjectContext
     @State private var clock_address = ""
     @State private var clock_port = ""
-    @State private var connectionTestState = ConnectionTestState.base
-    @State private var clockTestState = ClockTestState.base
+    @State private var connectionTestState = RequestState.base
+    @State private var clockTestState = RequestState.base
+    @State private var pullState = RequestState.base
     
     @ObservedObject var keyboard = KeyboardResponder()
     var body: some View {
@@ -124,6 +125,43 @@ struct SettingsView: View {
                     }
                 }
                 Spacer()
+                Button(action: self.pullClock){
+                    if(self.pullState == .success){
+                        Image(systemName: "checkmark")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.green)
+                            .cornerRadius(15)
+                    } else if(self.pullState == .failure){
+                        Image(systemName: "xmark")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.red)
+                            .cornerRadius(15)
+                    } else if (self.pullState == .loading){
+                        Image(systemName: "arrow.2.circlepath")
+                            .resizable()
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 50, height: 50)
+                            .background(Color.purple)
+                            .cornerRadius(15)
+                            .rotationEffect(.degrees(360))
+                    }else{
+                        Text("Pull code clock")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(width: 300, height: 50)
+                            .background(Color.purple)
+                            .cornerRadius(15)
+                    }
+                }
             }.navigationBarTitle("Settings")
         }.onAppear{
             self.loadSettings()
@@ -155,16 +193,34 @@ struct SettingsView: View {
         })
     }
     
-    private func showTestState(temporary_state: ConnectionTestState){
+    private func pullClock(){
+        self.pullState = .loading
+        let clockAddress = self.clock_address + ":" + self.clock_port
+        HttpClockApiUtility.sendPullCommand(clockAddress: clockAddress, onSuccess: {(msg) in
+            self.showPullState(temporary_state: .success)
+        }, onError: {(errorMsg) in
+            print("error")
+            self.showPullState(temporary_state: .failure)
+        })
+    }
+    
+    
+    private func showTestState(temporary_state: RequestState){
         self.connectionTestState = temporary_state
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.connectionTestState = .base
         }
     }
-    private func showClockTestState(temporary_state: ClockTestState){
+    private func showClockTestState(temporary_state: RequestState){
         self.clockTestState = temporary_state
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.clockTestState = .base
+        }
+    }
+    private func showPullState(temporary_state: RequestState){
+        self.pullState = temporary_state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.pullState = .base
         }
     }
     private func loadSettings() {
@@ -192,19 +248,13 @@ struct SettingsView: View {
         saveSettings()
     }
     
-    enum ConnectionTestState{
+    enum RequestState{
         case base;
         case loading;
         case success;
         case failure;
     }
-    
-    enum ClockTestState{
-        case base;
-        case loading;
-        case success;
-        case failure;
-    }
+
 }
 
 struct SettingsViews_Previews: PreviewProvider {

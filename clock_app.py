@@ -35,6 +35,12 @@ def test():
         f.close()
     return "Starting test mode..."
 
+@app.route("/pull", methods=["POST"])
+def pull():
+    os.system("echo Pulling the latest code...")
+    os.system("git pull")
+    return "Code updated!"
+
 
 @app.route("/color", methods=["GET"])
 def color_get():

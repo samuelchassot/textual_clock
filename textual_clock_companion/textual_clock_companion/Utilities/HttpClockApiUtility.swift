@@ -123,6 +123,25 @@ struct HttpClockApiUtility {
             onError("Cannot create url for \(urlString)")
         }
     }
+    static func sendPullCommand(clockAddress: String, onSuccess: @escaping (String) -> Void, onError: @escaping (String) -> Void){
+        let payload = try? JSONEncoder().encode(["pull": "yes"])
+        if(payload == nil){
+            onError("Cannot encode the json payload!")
+            return
+        }
+        let urlString = "http://\(clockAddress)/pull"
+        let urlO = URL(string: urlString)
+        if let url = urlO {
+            var urlRequest = URLRequest(url: url)
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpMethod = "POST"
+            sendRequest(request: urlRequest, onSuccess: {(data) in
+                onSuccess("Reboot command sent!")
+            }, onError: onError)
+        } else {
+            onError("Cannot create url for \(urlString)")
+        }
+    }
     
     static func checkLiveness(clockAddress: String, onSuccess: @escaping (LivenessMessage) -> Void, onError: @escaping (String) -> Void) -> Void {
         let urlString = "http://\(clockAddress)/liveness"
