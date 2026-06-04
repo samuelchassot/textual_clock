@@ -172,7 +172,7 @@ class DisplayLed:
                     debug_str += f"corner{j}"
                 else:
                     debug_str += f"({i},{j})"
-        return debug_str                                       113
+        return debug_str
 
 class Clock:
     def __init__(self, display: DisplayLed, time_provider: TimeProvider = TimeProvider()) -> None:
