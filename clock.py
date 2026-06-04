@@ -189,6 +189,18 @@ class DisplayLed:
         return debug_str
 
 class Clock:
+    ANIM_MS    = 40
+    ANIM_TOTAL = 5.0
+    LOCK_AFTER = 2.0
+
+    RAIN_HEAD = (223, 255, 223)
+    RAIN_C1   = (  0, 255,  65)
+    RAIN_C2   = (  0, 192,  48)
+    RAIN_C3   = (  0, 128,  32)
+    RAIN_C4   = (  0,  69,  16)
+    RAIN_DARK = (  0,  24,   0)
+    FLASH     = (255, 255, 255)
+
     def __init__(self, display: DisplayLed, time_provider: TimeProvider = TimeProvider()) -> None:
         self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
@@ -441,6 +453,82 @@ class Clock:
 
         return cells
 
+    def _matrix_rain(self, target_cells: list[tuple[int, int]]) -> None:
+        """Falling-character animation from word_clock_matrix_tkinter.py, ported to LEDs.
+        Ends with target_cells lit in self.color_on and all other letter cells off."""
+        nrows = self.display.n_lines
+        ncols = self.display.n_leds_per_line
+        pixels = self.display.pixels
+        target_color = self.color_on
+        target_set = set(target_cells)
+
+        drop_y = [random.uniform(-nrows * 0.7, 0) for _ in range(ncols)]
+        drop_speed = [random.uniform(3.0, 5.5) for _ in range(ncols)]
+        lock_q = list(target_set)
+        random.shuffle(lock_q)
+        locked: dict[tuple[int, int], float] = {}
+
+        # auto_write triggers a strip refresh on every pixel assignment — far too
+        # slow at ~110 writes per frame. Batch the frame and call show() once.
+        prev_auto = getattr(pixels, "auto_write", None)
+        if prev_auto is not None:
+            pixels.auto_write = False
+
+        try:
+            t0 = time.time()
+            dt = self.ANIM_MS / 1000.0
+            while True:
+                t = time.time() - t0
+                if t >= self.ANIM_TOTAL:
+                    break
+
+                for c in range(ncols):
+                    drop_y[c] += drop_speed[c] * dt
+                    if drop_y[c] > nrows + 9:
+                        drop_y[c] = random.uniform(-2, 0)
+                        drop_speed[c] = random.uniform(3.0, 5.5)
+
+                if t >= self.LOCK_AFTER and lock_q:
+                    phase = (t - self.LOCK_AFTER) / (self.ANIM_TOTAL - self.LOCK_AFTER)
+                    n_target = int(phase * len(target_set))
+                    while len(locked) < n_target and lock_q:
+                        cell = lock_q.pop(0)
+                        locked[cell] = t
+
+                for r in range(nrows):
+                    for c in range(ncols):
+                        cell = (r, c)
+                        if cell in locked:
+                            age = t - locked[cell]
+                            color = self.FLASH if age < 0.12 else target_color
+                        else:
+                            dist = drop_y[c] - r
+                            if 0.0 <= dist < 0.7:
+                                color = self.RAIN_HEAD
+                            elif 0.7 <= dist < 2.5:
+                                color = self.RAIN_C1
+                            elif 2.5 <= dist < 4.5:
+                                color = self.RAIN_C2
+                            elif 4.5 <= dist < 6.5:
+                                color = self.RAIN_C3
+                            elif 6.5 <= dist < 9.0:
+                                color = self.RAIN_C4
+                            elif dist >= 9.0:
+                                color = self.RAIN_DARK
+                            else:
+                                color = self.color_off
+                        pixels[self.display.to_physical_index(r, c)] = color
+
+                if hasattr(pixels, "show"):
+                    pixels.show()
+                time.sleep(dt)
+        finally:
+            if prev_auto is not None:
+                pixels.auto_write = prev_auto
+
+        self.display.turn_off_all()
+        self.display.turn_on(list(target_set))
+
     def update_clock_matrix(self):
         tested = False
         if os.path.exists("test.txt"):
@@ -473,10 +561,9 @@ class Clock:
         print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
 
         if self.anything_changed_except_corners(old_tuple) or tested:
-            self.display.turn_off_all()
             cells = self._matrix_cells(eff_hour, disp_min)
-            debug_str = self.display.turn_on(cells)
-            print(f"Lit: {debug_str}")
+            print(f"Animating {len(cells)} target cells")
+            self._matrix_rain(cells)
 
         if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
             self.show_minutes_after_five_minutes(corner_leds)
