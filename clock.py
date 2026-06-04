@@ -4,6 +4,65 @@ import random
 import time
 
 
+WORD_DEFS = {
+    'IL':      [(0, 0,  1)],
+    'EST':     [(0, 3,  5)],
+    'DEUX':    [(0, 7, 10)],
+    'QUATRE':  [(1, 0,  5)],
+    'TROIS':   [(1, 6, 10)],
+    'NEUF':    [(2, 0,  3)],
+    'UNE':     [(2, 4,  6)],
+    'SEPT':    [(2, 7, 10)],
+    'HUIT':    [(3, 0,  3)],
+    'SIX':     [(3, 4,  6)],
+    'CINQ_H':  [(3, 7, 10)],
+    'MIDI':    [(4, 0,  3)],
+    'DIX_H':   [(4, 2,  4)],
+    'MINUIT':  [(4, 5, 10)],
+    'ONZE':    [(5, 0,  3)],
+    'HEURE':   [(5, 5,  9)],
+    'HEURES':  [(5, 5, 10)],
+    'MOINS':   [(6, 0,  4)],
+    'LE':      [(6, 6,  7)],
+    'DIX_M':   [(6, 8, 10)],
+    'ET_Q':    [(7, 0,  1)],
+    'QUART':   [(7, 3,  7)],
+    'VINGT':   [(8, 0,  4)],
+    'CINQ_M':  [(8, 6,  9)],
+    'ET_D':    [(9, 0,  1)],
+    'DEMIE':   [(9, 3,  7)],
+}
+
+HOUR_MAP = {
+    1:  ('UNE',    'HEURE'),
+    2:  ('DEUX',   'HEURES'),
+    3:  ('TROIS',  'HEURES'),
+    4:  ('QUATRE', 'HEURES'),
+    5:  ('CINQ_H', 'HEURES'),
+    6:  ('SIX',    'HEURES'),
+    7:  ('SEPT',   'HEURES'),
+    8:  ('HUIT',   'HEURES'),
+    9:  ('NEUF',   'HEURES'),
+    10: ('DIX_H',  'HEURES'),
+    11: ('ONZE',   'HEURES'),
+}
+
+MINUTE_WORDS = {
+    0:  [],
+    5:  ['CINQ_M'],
+    10: ['DIX_M'],
+    15: ['ET_Q', 'QUART'],
+    20: ['VINGT'],
+    25: ['VINGT', 'CINQ_M'],
+    30: ['ET_D', 'DEMIE'],
+    35: ['MOINS', 'VINGT', 'CINQ_M'],
+    40: ['MOINS', 'VINGT'],
+    45: ['MOINS', 'LE', 'QUART'],
+    50: ['MOINS', 'DIX_M'],
+    55: ['MOINS', 'CINQ_M'],
+}
+
+
 class TimeProvider:
     def get_current_time(self) -> time.struct_time:
         return time.localtime()
@@ -335,6 +394,76 @@ class Clock:
             #     self.show_pm()
         if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
             self.show_minutes_after_five_minutes(residual_minutes)
+
+    def _word_cells(self, word: str) -> list[tuple[int, int]]:
+        cells = []
+        for row, c0, c1 in WORD_DEFS[word]:
+            for col in range(c0, c1 + 1):
+                cells.append((row, col))
+        return cells
+
+    def _matrix_cells(self, eff_hour: int, disp_min: int) -> list[tuple[int, int]]:
+        cells = []
+        cells.extend(self._word_cells('IL'))
+        cells.extend(self._word_cells('EST'))
+
+        if eff_hour == 0:
+            cells.extend(self._word_cells('MINUIT'))
+        elif eff_hour == 12:
+            cells.extend(self._word_cells('MIDI'))
+        else:
+            h = eff_hour % 12
+            h_word, heure_word = HOUR_MAP[h]
+            cells.extend(self._word_cells(h_word))
+            cells.extend(self._word_cells(heure_word))
+
+        for w in MINUTE_WORDS.get(disp_min, []):
+            cells.extend(self._word_cells(w))
+
+        # Tiret du VINGT-CINQ
+        if disp_min in (25, 35):
+            cells.append((8, 5))
+
+        return cells
+
+    def update_clock_matrix(self):
+        tested = False
+        if os.path.exists("test.txt"):
+            print("Test mode activated!")
+            self.test_loop()
+            os.remove("test.txt")
+            self.display.turn_off_all()
+            tested = True
+
+        now = self.time_provider.get_current_time()
+        hour = now.tm_hour
+        minute = now.tm_min
+
+        disp_min = (minute // 5) * 5
+        corner_leds = minute % 5
+        eff_hour = (hour + 1) % 24 if disp_min >= 35 else hour
+        five_minutes = disp_min // 5
+
+        self.color_on = self.read_current_color()
+        for period in self.SPECIAL_TIME_PERIODS:
+            if (eff_hour >= period.start_time[0] and eff_hour <= period.end_time[0]) and (disp_min >= period.start_time[1] and disp_min <= period.end_time[1]):
+                self.color_on = period.color
+                break
+
+        old_tuple = self.last_h_five_min_residual_minutes_color
+        self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
+
+        print(f"now: {eff_hour}h, 5 minutes: {five_minutes}, residual minutes: {corner_leds}, color: {self.color_on}")
+        print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
+
+        if self.anything_changed_except_corners(old_tuple) or tested:
+            self.display.turn_off_all()
+            cells = self._matrix_cells(eff_hour, disp_min)
+            debug_str = self.display.turn_on(cells)
+            print(f"Lit: {debug_str}")
+
+        if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
+            self.show_minutes_after_five_minutes(corner_leds)
 
     def show_hour(self, h: int):
         if h == 0:
