@@ -80,6 +80,20 @@ class DisplayLed:
         self.pixels = led_array
         self.n_lines = (len(led_array) - 4) // n_leds_per_line
         assert len(led_array) == 114
+        self.color_off = (0, 0, 0)
+        self.color_on = (255, 255, 255)
+        self.debug_characters = [
+            "I", "L", "N", "E", "S", "T", "O", "D", "E", "U", "X",
+            "Q", "U", "A", "T", "R", "E", "T", "R", "O", "I", "S",
+            "N", "E", "U", "F", "U", "N", "E", "S", "E", "P", "T",
+            "H", "U", "I", "T", "S", "I", "X", "C", "I", "N", "Q",
+            "M", "I", "D", "I", "X", "M", "I", "N", "U", "I", "T",
+            "O", "N", "Z", "E", "R", "H", "E", "U", "R", "E", "S",
+            "M", "O", "I", "N", "S", "O", "L", "E", "D", "I", "X",
+            "E", "T", "R", "Q", "U", "A", "R", "T", "P", "R", "D",
+            "V", "I", "N", "G", "T", "-", "C", "I", "N", "Q", "U",
+            "E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M",
+        ]
     # LEDS helper functions
 
     # Letters on the clock:
@@ -371,6 +385,7 @@ class Clock:
             if (h >= period.start_time[0] and h <= period.end_time[0]) and (minutes >= period.start_time[1] and minutes <= period.end_time[1]):
                 self.color_on = period.color
                 break
+        self.display.color_on = self.color_on
 
         assert(residual_minutes >= 0 and residual_minutes < 5)
 
@@ -449,6 +464,7 @@ class Clock:
             if (eff_hour >= period.start_time[0] and eff_hour <= period.end_time[0]) and (disp_min >= period.start_time[1] and disp_min <= period.end_time[1]):
                 self.color_on = period.color
                 break
+        self.display.color_on = self.color_on
 
         old_tuple = self.last_h_five_min_residual_minutes_color
         self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
