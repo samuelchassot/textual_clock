@@ -330,7 +330,7 @@ class Clock:
     def run_loop(self, refresh_rate_seconds: int = 5, delay_between_words_seconds: float = 0.2):
         print("Start of the clock")
         while True:
-            self.update_clock(delay_between_words_seconds)
+            self.update_clock_matrix()
             time.sleep(refresh_rate_seconds)
 
     def test_loop(self):
