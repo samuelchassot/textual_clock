@@ -14,8 +14,109 @@ class TimePeriod:
         self.end_time = end_time
         self.color = color
 
+class DisplayLed: 
+
+    def __init__(self, n_leds_per_line: int, led_array) -> None:
+        self.n_leds_per_line = n_leds_per_line
+        self.pixels = led_array
+        self.n_lines = (len(led_array) - 4) // n_leds_per_line
+        assert len(led_array) == 114
+    # LEDS helper functions
+
+    # Letters on the clock:
+    #
+    #    0 1 2 3 4 5 6 7 8 9 10
+    # 0  I L N E S T O D E U X
+    # 1  Q U A T R E T R O I S
+    # 2  N E U F U N E S E P T
+    # 3  H U I T S I X C I N Q
+    # 4  M I D I X M I N U I T
+    # 5  O N Z E R H E U R E S
+    # 6  M O I N S O L E D I X
+    # 7  E T R Q U A R T P R D
+    # 8  V I N G T - C I N Q U
+    # 9  E T S D E M I E P A M
+    #
+    # BUT the LEDs are soldered in a back and forth motion, which gives these indices:
+
+    #   111                                            112
+    #       0   1   2   3   4   5   6   7   8   9   10
+    #       21  20  19  18  17  16  15  14  13  12  11
+    #       22  23  24  25  26  27  28  29  30  31  32
+    #       43  42  41  40  39  38  37  36  35  34  33
+    #       44  45  46  47  48  49  50  51  52  53  54
+    #       65  64  63  62  61  60  59  58  57  56  55
+    #       66  67  68  69  70  71  72  73  74  75  76
+    #       87  86  85  84  83  82  81  80  79  78  77
+    #       88  89  90  91  92  93  94  95  96  97  98
+    #       109 108 107 106 105 104 103 102 101 100 99
+    #   110                                            113
+
+    # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
+    # Use 
+    #         (-1, 1): top left 
+    #         (-1, 2): top right
+    #         (-1, 3): bottom right
+    #         (-1, 4): bottom left
+    #       
+    #       for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
+        
+    def to_physical_index(self, i: int, j: int) -> int:
+        if i == -1:
+            return int(self.n_leds_per_line * self.n_lines + (j % 4))
+            # if j == 1:
+            #     return int(self.n_leds_per_line * self.n_lines + (j % 4))
+            # elif j == 2:
+            #     return int(self.n_leds_per_line * self.n_lines + 2)
+            # elif j == 3:
+            #     return int(self.n_leds_per_line * self.n_lines + 3)
+            # elif j == 4:
+            #     return int(self.n_leds_per_line * self.n_lines)
+        if i % 2 == 0:
+            return int(i * self.n_leds_per_line + j)
+        else:
+            return int(i * self.n_leds_per_line + (self.n_leds_per_line - j - 1))
+
+
+    def turn_off_all(self):
+        self.pixels.fill(self.color_off)
+    
+    def turn_on_all(self, color: tuple[int, int, int]):
+        self.pixels.fill(color)
+    
+    def turn_off(self, indices: list[tuple[int, int]]):
+        for i, j in indices:
+            index = self.to_physical_index(i, j)
+            self.pixels[index] = self.color_off
+
+
+    def turn_on(self, indices: list[tuple[int, int]]):
+        """Turn on the LEDs at the positions given by the tuples in the list. The tuple gives the line then the column.
+           Use 
+             (-1, 1): top left 
+             (-1, 2): top right
+             (-1, 3): bottom right
+             (-1, 4): bottom left
+           
+           for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
+        
+        """
+
+        debug_str = ""
+        for i, j in indices:
+            index = self.to_physical_index(i, j)
+            self.pixels[index] = self.color_on
+            if index >= 0 and index < len(self.debug_characters):
+                debug_str += self.debug_characters[index]
+            else:
+                if i == -1:
+                    debug_str += f"corner{j}"
+                else:
+                    debug_str += f"({i},{j})"
+        return debug_str                                       113
+
 class Clock:
-    def __init__(self, n_leds_per_line, led_array, time_provider: TimeProvider = TimeProvider()) -> None:
+    def __init__(self, display: DisplayLed, time_provider: TimeProvider = TimeProvider()) -> None:
         self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
         self.SPECIAL_TIME_PERIODS_FILE_PATH = "res/special_time_periods.txt"
@@ -23,13 +124,8 @@ class Clock:
         self.SEPARATOR = ";"
         self.DEFAULT_COLOR = (255, 255, 255)
 
-        self.n_leds_per_line = n_leds_per_line
-        self.pixels = led_array
+        self.display = display
 
-        # 4 leds are in the corners to indicate the current minute
-        assert (len(led_array) - 4) % n_leds_per_line == 0
-
-        self.n_lines = (len(led_array) - 4) // n_leds_per_line
 
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
@@ -166,30 +262,30 @@ class Clock:
 
     def test_loop(self):
         print("turning off")
-        self.turn_off_all()
+        self.display.turn_off_all()
         time.sleep(0.8)
         print("turning on")
         self.color_on = self.read_current_color()
 
-        for i in range(self.n_lines):
-            for j in range(self.n_leds_per_line):
+        for i in range(self.display.n_lines):
+            for j in range(self.display.n_leds_per_line):
                 # physical_index = to_physical_index(i, j, n_leds_per_line)
                 # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
-                self.turn_on([(i,j)])
+                self.display.turn_on([(i,j)])
                 time.sleep(0.5)
         
         # turn on the 4 corners
         for i in range(1, 5):
-            self.turn_on([(-1,i)])
+            self.display.turn_on([(-1,i)])
             time.sleep(0.5)
             
         time.sleep(2)
-        self.turn_off_all()
+        self.display.turn_off_all()
         time.sleep(0.8)
         for i in range(10):
-            self.turn_on_all(self.color_on)
+            self.display.turn_on_all(self.color_on)
             time.sleep(0.8)
-            self.turn_off_all()
+            self.display.turn_off_all()
             time.sleep(0.8)
            
     def update_clock(self, delay_between_words_seconds: float = 0.2):
@@ -199,7 +295,7 @@ class Clock:
             print("Test mode activated!")
             self.test_loop()
             os.remove("test.txt")
-            self.turn_off_all()
+            self.display.turn_off_all()
             tested = True
         h = self.get_current_hour()
         five_minutes = self.get_current_five_minutes()
@@ -225,7 +321,7 @@ class Clock:
         print(f"now: {self.last_h_five_min_residual_minutes_color[0]}h, 5 minutes: {self.last_h_five_min_residual_minutes_color[1]}, residual minutes: {self.last_h_five_min_residual_minutes_color[2]}, color: {self.last_h_five_min_residual_minutes_color[3]}")
         print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
         if self.anything_changed_except_corners(old_tuple) or tested:
-            self.turn_off_all()
+            self.display.turn_off_all()
             print(f"Color: {self.color_on}")
             self.show_il_est()
             time.sleep(delay_between_words_seconds)
@@ -348,100 +444,6 @@ class Clock:
             self.show_cinq_min()
 
 
-    # LEDS helper functions
-
-    # Letters on the clock:
-    #
-    #    0 1 2 3 4 5 6 7 8 9 10
-    # 0  I L N E S T O D E U X
-    # 1  Q U A T R E T R O I S
-    # 2  N E U F U N E S E P T
-    # 3  H U I T S I X C I N Q
-    # 4  M I D I X M I N U I T
-    # 5  O N Z E R H E U R E S
-    # 6  M O I N S O L E D I X
-    # 7  E T R Q U A R T P R D
-    # 8  V I N G T - C I N Q U
-    # 9  E T S D E M I E P A M
-    #
-    # BUT the LEDs are soldered in a back and forth motion, which gives these indices:
-
-    #   111                                            112
-    #       0   1   2   3   4   5   6   7   8   9   10
-    #       21  20  19  18  17  16  15  14  13  12  11
-    #       22  23  24  25  26  27  28  29  30  31  32
-    #       43  42  41  40  39  38  37  36  35  34  33
-    #       44  45  46  47  48  49  50  51  52  53  54
-    #       65  64  63  62  61  60  59  58  57  56  55
-    #       66  67  68  69  70  71  72  73  74  75  76
-    #       87  86  85  84  83  82  81  80  79  78  77
-    #       88  89  90  91  92  93  94  95  96  97  98
-    #       109 108 107 106 105 104 103 102 101 100 99
-    #   110                                            113
-
-    # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
-    # Use 
-    #         (-1, 1): top left 
-    #         (-1, 2): top right
-    #         (-1, 3): bottom right
-    #         (-1, 4): bottom left
-    #       
-    #       for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
-        
-    def to_physical_index(self, i: int, j: int) -> int:
-        if i == -1:
-            return int(self.n_leds_per_line * self.n_lines + (j % 4))
-            # if j == 1:
-            #     return int(self.n_leds_per_line * self.n_lines + (j % 4))
-            # elif j == 2:
-            #     return int(self.n_leds_per_line * self.n_lines + 2)
-            # elif j == 3:
-            #     return int(self.n_leds_per_line * self.n_lines + 3)
-            # elif j == 4:
-            #     return int(self.n_leds_per_line * self.n_lines)
-        if i % 2 == 0:
-            return int(i * self.n_leds_per_line + j)
-        else:
-            return int(i * self.n_leds_per_line + (self.n_leds_per_line - j - 1))
-
-
-    def turn_off_all(self):
-        self.pixels.fill(self.color_off)
-    
-    def turn_on_all(self, color: tuple[int, int, int]):
-        self.pixels.fill(color)
-    
-    def turn_off(self, indices: list[tuple[int, int]]):
-        for i, j in indices:
-            index = self.to_physical_index(i, j)
-            self.pixels[index] = self.color_off
-
-
-    def turn_on(self, indices: list[tuple[int, int]]):
-        """Turn on the LEDs at the positions given by the tuples in the list. The tuple gives the line then the column.
-           Use 
-             (-1, 1): top left 
-             (-1, 2): top right
-             (-1, 3): bottom right
-             (-1, 4): bottom left
-           
-           for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
-        
-        """
-
-        debug_str = ""
-        for i, j in indices:
-            index = self.to_physical_index(i, j)
-            self.pixels[index] = self.color_on
-            if index >= 0 and index < len(self.debug_characters):
-                debug_str += self.debug_characters[index]
-            else:
-                if i == -1:
-                    debug_str += f"corner{j}"
-                else:
-                    debug_str += f"({i},{j})"
-        return debug_str
-
     def show_il_est(self):
         to_turn_on = []
         to_turn_on.append((0, 0))
@@ -449,7 +451,7 @@ class Clock:
         to_turn_on.append((0, 3))
         to_turn_on.append((0, 4))
         to_turn_on.append((0, 5))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     # Hours functions
     def show_une(self):
@@ -457,7 +459,7 @@ class Clock:
         to_turn_on.append((2, 4))
         to_turn_on.append((2, 5))
         to_turn_on.append((2, 6))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_deux(self):
         to_turn_on = []
@@ -465,7 +467,7 @@ class Clock:
         to_turn_on.append((0, 8))
         to_turn_on.append((0, 9))
         to_turn_on.append((0, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_trois(self):
         to_turn_on = []
@@ -474,7 +476,7 @@ class Clock:
         to_turn_on.append((1, 8))
         to_turn_on.append((1, 9))
         to_turn_on.append((1, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_quatre(self):
         to_turn_on = []
@@ -484,7 +486,7 @@ class Clock:
         to_turn_on.append((1, 3))
         to_turn_on.append((1, 4))
         to_turn_on.append((1, 5))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_cinq(self):
         to_turn_on = []
@@ -492,14 +494,14 @@ class Clock:
         to_turn_on.append((3, 8))
         to_turn_on.append((3, 9))
         to_turn_on.append((3, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_six(self):
         to_turn_on = []
         to_turn_on.append((3, 4))
         to_turn_on.append((3, 5))
         to_turn_on.append((3, 6))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_sept(self):
         to_turn_on = []
@@ -507,7 +509,7 @@ class Clock:
         to_turn_on.append((2, 8))
         to_turn_on.append((2, 9))
         to_turn_on.append((2, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_huit(self):
         to_turn_on = []
@@ -515,7 +517,7 @@ class Clock:
         to_turn_on.append((3, 1))
         to_turn_on.append((3, 2))
         to_turn_on.append((3, 3))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_neuf(self):
         to_turn_on = []
@@ -523,14 +525,14 @@ class Clock:
         to_turn_on.append((2, 1))
         to_turn_on.append((2, 2))
         to_turn_on.append((2, 3))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_dix(self):
         to_turn_on = []
         to_turn_on.append((4, 2))
         to_turn_on.append((4, 3))
         to_turn_on.append((4, 4))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_onze(self):
         to_turn_on = []
@@ -538,7 +540,7 @@ class Clock:
         to_turn_on.append((5, 1))
         to_turn_on.append((5, 2))
         to_turn_on.append((5, 3))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_midi(self):
         to_turn_on = []
@@ -546,7 +548,7 @@ class Clock:
         to_turn_on.append((4, 1))
         to_turn_on.append((4, 2))
         to_turn_on.append((4, 3))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_minuit(self):
         to_turn_on = []
@@ -556,7 +558,7 @@ class Clock:
         to_turn_on.append((4, 8))
         to_turn_on.append((4, 9))
         to_turn_on.append((4, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_heure(self):
         to_turn_on = []
@@ -565,7 +567,7 @@ class Clock:
         to_turn_on.append((5, 7))
         to_turn_on.append((5, 8))
         to_turn_on.append((5, 9))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_heures(self):
         to_turn_on = []
@@ -575,19 +577,19 @@ class Clock:
         to_turn_on.append((5, 8))
         to_turn_on.append((5, 9))
         to_turn_on.append((5, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_am(self):
         to_turn_on = []
         to_turn_on.append((9, 9))
         to_turn_on.append((9, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_pm(self):
         to_turn_on = []
         to_turn_on.append((9, 8))
         to_turn_on.append((9, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
     # Minutes functions
     def show_moins(self):
         to_turn_on = []
@@ -596,19 +598,19 @@ class Clock:
         to_turn_on.append((6, 2))
         to_turn_on.append((6, 3))
         to_turn_on.append((6, 4))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_et_above(self):
         to_turn_on = []
         to_turn_on.append((7, 0))
         to_turn_on.append((7, 1))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_et_below(self):
         to_turn_on = []
         to_turn_on.append((9, 0))
         to_turn_on.append((9, 1))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_cinq_min(self):
         to_turn_on = []
@@ -616,14 +618,14 @@ class Clock:
         to_turn_on.append((8, 7))
         to_turn_on.append((8, 8))
         to_turn_on.append((8, 9))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_dix_min(self):
         to_turn_on = []
         to_turn_on.append((6, 8))
         to_turn_on.append((6, 9))
         to_turn_on.append((6, 10))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_quart(self):
         to_turn_on = []
@@ -632,7 +634,7 @@ class Clock:
         to_turn_on.append((7, 5))
         to_turn_on.append((7, 6))
         to_turn_on.append((7, 7))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_vingt_min(self):
         to_turn_on = []
@@ -641,12 +643,12 @@ class Clock:
         to_turn_on.append((8, 2))
         to_turn_on.append((8, 3))
         to_turn_on.append((8, 4))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_dash_min(self):
         to_turn_on = []
         to_turn_on.append((8, 5))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
 
     def show_demie(self):
         to_turn_on = []
@@ -655,10 +657,10 @@ class Clock:
         to_turn_on.append((9, 5))
         to_turn_on.append((9, 6))
         to_turn_on.append((9, 7))
-        return self.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on)
     
     def show_minutes_after_five_minutes(self, c: int):
-        self.turn_off([(-1, 1), (-1, 2), (-1, 3), (-1, 4)])
+        self.display.turn_off([(-1, 1), (-1, 2), (-1, 3), (-1, 4)])
         to_turn_on = []
         if c >= 1:
             to_turn_on.append((-1, 1))
@@ -668,15 +670,4 @@ class Clock:
             to_turn_on.append((-1, 3))
         if c >= 4:
             to_turn_on.append((-1, 4))
-        return self.turn_on(to_turn_on)
-    
-
-    def test_leds_column_per_column(self):
-        for j in range(self.n_leds_per_line):
-            to_turn_on = []
-            for i in range(self.n_lines):
-                to_turn_on.append((i, j))
-            self.turn_on(to_turn_on)
-            time.sleep(0.5)
-        time.sleep(2)
-        self.turn_off_all()
+        return self.display.turn_on(to_turn_on)
