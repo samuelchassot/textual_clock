@@ -120,7 +120,8 @@ if __name__ == "__main__":
     n_leds_per_line = 11
     n_leds = n_leds_per_line * 10 + 4 # 10 lines of 11 LEDs + 4 LEDs for the minutes in the corners
     pixels = neopixel.NeoPixel(board.D18, n_leds)
-    clk = clock.Clock(n_leds_per_line, pixels)
+    display = clock.DisplayLed(n_leds_per_line, pixels)
+    clk = clock.Clock(display)
     refresh_rate_seconds = 5
     delay_between_words_seconds = 0.2
     clock_thread = threading.Thread(target=clk.run_loop, args=(refresh_rate_seconds, delay_between_words_seconds))
