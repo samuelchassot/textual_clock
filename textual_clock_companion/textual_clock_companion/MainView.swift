@@ -22,10 +22,14 @@ struct MainView: View {
     @State private var applyColorState = RequestState.base
     @State private var rebootState = RequestState.base
     
+    @State private var styleOptions: [String] = []
+    @State private var selectedStyle: String = ""
+    
     var body: some View {
         NavigationView {
             VStack{
                 Spacer()
+                
                 Text("Select a color for the clock's text:")
                     .font(.headline)
                 ColorPicker("Clock color", selection: $selectedColor)
@@ -42,8 +46,20 @@ struct MainView: View {
                     Text("100%")
                 }.frame(width: 250)
                 Spacer()
+                Text("Select a transition style:")
+                if !styleOptions.isEmpty {
+                    Picker("Update Style", selection: $selectedStyle) {
+                        ForEach(styleOptions, id: \.self) { opt in
+                            Text(opt.capitalized).tag(opt)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .padding()
+                }
+                Spacer()
                 
-                Button(action: self.updateColorButton){
+                
+                Button(action: self.applyChanges){
                     if(self.applyColorState == .success){
                         Image(systemName: "checkmark")
                             .font(.headline)
@@ -71,7 +87,7 @@ struct MainView: View {
                             .cornerRadius(15)
                             .rotationEffect(.degrees(360))
                     }else{
-                        Text("Apply color")
+                        Text("Apply Changes")
                             .font(.headline)
                             .foregroundColor(.white)
                             .padding()
@@ -125,6 +141,8 @@ struct MainView: View {
             .onAppear{
                 self.loadClockName()
                 self.getCurrentClockColor()
+                self.getStyleOptions()
+                self.getCurrentStyle()
             }
         }
     }
@@ -138,18 +156,18 @@ struct MainView: View {
         })
     }
     
-    private func updateColorButton(){
-        self.updateColor(color: self.selectedColor)
-    }
-    
-    private func updateColor(color: Color) -> Void{
-        print("update")
-        let rgbColor = RgbColor.fromUIColor(uiColor: color).applyBrightness(brightness: selectedBrightness)
+    private func applyChanges() {
+        let rgbColor = RgbColor.fromUIColor(uiColor: self.selectedColor).applyBrightness(brightness: selectedBrightness)
         self.applyColorState = .loading
-        HttpClockApiUtility.sendColorUpdate(clockAddress: self.clockAddress, color: rgbColor, onSuccess: {(msg) in
-            self.showApplyColorResult(temporary_state: .success)
-        }, onError: {(errorMsg) in
-            print("error")
+        HttpClockApiUtility.sendColorUpdate(clockAddress: self.clockAddress, color: rgbColor, onSuccess: { _ in
+            HttpClockApiUtility.postUpdateStyle(styleName: self.selectedStyle, onSuccess: { _ in
+                self.showApplyColorResult(temporary_state: .success)
+                self.getCurrentClockColor()
+                self.getCurrentStyle()
+            }, onError: { _ in
+                self.showApplyColorResult(temporary_state: .failure)
+            })
+        }, onError: { _ in
             self.showApplyColorResult(temporary_state: .failure)
         })
     }
@@ -183,6 +201,23 @@ struct MainView: View {
         let clockName = clockSettings.clock_name ?? "unset"
         let clockPort = clockSettings.clock_port ?? "unset"
         self.clockAddress = clockName + ":" + clockPort
+    }
+    
+    private func getStyleOptions() {
+        HttpClockApiUtility.getUpdateStyleOptions(onSuccess: { options in
+            DispatchQueue.main.async {
+                self.styleOptions = options
+                if self.selectedStyle.isEmpty, let first = options.first {
+                    self.selectedStyle = first
+                }
+            }
+        }, onError: { _ in })
+    }
+    
+    private func getCurrentStyle() {
+        HttpClockApiUtility.getUpdateStyle(clockAddress: self.clockAddress, onSuccess: { style in
+            DispatchQueue.main.async { self.selectedStyle = style }
+        }, onError: { _ in })
     }
     
     enum RequestState{
