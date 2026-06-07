@@ -80,7 +80,7 @@ def update_style_get():
 
 @app.route("/update_style/options", methods=["GET"])
 def update_style_options():
-    options = [style.value for style in clock.UpdateStyle]
+    options = clk.update_style_options()
     return jsonify({"update_style_options": options}), 200
 
 @app.route("/special_time_periods", methods=["POST"])

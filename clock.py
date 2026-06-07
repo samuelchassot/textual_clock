@@ -295,6 +295,8 @@ class Clock:
             except Exception as e:
                 print("ERROR: cannot write the default update style to file!\n", e)
             return UPDATE_STYLE.SIMPLE
+    def update_style_options(self) -> list[str]:
+        return [style.value for style in UPDATE_STYLE]
 
         
     def load_special_time_periods(self):
