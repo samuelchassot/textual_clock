@@ -34,17 +34,17 @@ WORD_DEFS = {
 }
 
 HOUR_MAP = {
-    1:  ('UNE',    'HEURE'),
-    2:  ('DEUX',   'HEURES'),
-    3:  ('TROIS',  'HEURES'),
-    4:  ('QUATRE', 'HEURES'),
-    5:  ('CINQ_H', 'HEURES'),
-    6:  ('SIX',    'HEURES'),
-    7:  ('SEPT',   'HEURES'),
-    8:  ('HUIT',   'HEURES'),
-    9:  ('NEUF',   'HEURES'),
-    10: ('DIX_H',  'HEURES'),
-    11: ('ONZE',   'HEURES'),
+    1:  ['UNE',    'HEURE'],
+    2:  ['DEUX',   'HEURES'],
+    3:  ['TROIS',  'HEURES'],
+    4:  ['QUATRE', 'HEURES'],
+    5:  ['CINQ_H', 'HEURES'],
+    6:  ['SIX',    'HEURES'],
+    7:  ['SEPT',   'HEURES'],
+    8:  ['HUIT',   'HEURES'],
+    9:  ['NEUF',   'HEURES'],
+    10: ['DIX_H',  'HEURES'],
+    11: ['ONZE',   'HEURES'],
 }
 
 MINUTE_WORDS = {
@@ -57,7 +57,7 @@ MINUTE_WORDS = {
     30: ['ET_D', 'DEMIE'],
     35: ['MOINS', 'VINGT', 'CINQ_M'],
     40: ['MOINS', 'VINGT'],
-    45: ['MOINS', 'LE', 'QUART'],
+    45: ['MOINS', 'QUART'],
     50: ['MOINS', 'DIX_M'],
     55: ['MOINS', 'CINQ_M'],
 }
@@ -422,114 +422,108 @@ class Clock:
         if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
             self.show_minutes_after_five_minutes(residual_minutes)
 
-    def _word_cells(self, word: str) -> list[tuple[int, int]]:
-        cells = []
-        for row, c0, c1 in WORD_DEFS[word]:
-            for col in range(c0, c1 + 1):
-                cells.append((row, col))
-        return cells
-
-    def _matrix_cells(self, eff_hour: int, disp_min: int) -> list[tuple[int, int]]:
-        cells = []
-        cells.extend(self._word_cells('IL'))
-        cells.extend(self._word_cells('EST'))
-
-        if eff_hour == 0:
-            cells.extend(self._word_cells('MINUIT'))
-        elif eff_hour == 12:
-            cells.extend(self._word_cells('MIDI'))
-        else:
-            h = eff_hour % 12
-            h_word, heure_word = HOUR_MAP[h]
-            cells.extend(self._word_cells(h_word))
-            cells.extend(self._word_cells(heure_word))
-
-        for w in MINUTE_WORDS.get(disp_min, []):
-            cells.extend(self._word_cells(w))
-
-        # Tiret du VINGT-CINQ
-        if disp_min in (25, 35):
-            cells.append((8, 5))
-
-        return cells
-
-    def _matrix_rain(self, target_cells: list[tuple[int, int]]) -> None:
-        """Falling-character animation from word_clock_matrix_tkinter.py, ported to LEDs.
-        Ends with target_cells lit in self.color_on and all other letter cells off."""
-        nrows = self.display.n_lines
-        ncols = self.display.n_leds_per_line
-        pixels = self.display.pixels
-        target_color = self.color_on
-        target_set = set(target_cells)
-
-        drop_y = [random.uniform(-nrows * 0.7, 0) for _ in range(ncols)]
-        drop_speed = [random.uniform(3.0, 5.5) for _ in range(ncols)]
-        lock_q = list(target_set)
-        random.shuffle(lock_q)
-        locked: dict[tuple[int, int], float] = {}
-
-        # auto_write triggers a strip refresh on every pixel assignment — far too
-        # slow at ~110 writes per frame. Batch the frame and call show() once.
-        prev_auto = getattr(pixels, "auto_write", None)
-        if prev_auto is not None:
-            pixels.auto_write = False
-
-        try:
-            t0 = time.time()
-            dt = self.ANIM_MS / 1000.0
-            while True:
-                t = time.time() - t0
-                if t >= self.ANIM_TOTAL:
-                    break
-
-                for c in range(ncols):
-                    drop_y[c] += drop_speed[c] * dt
-                    if drop_y[c] > nrows + 9:
-                        drop_y[c] = random.uniform(-2, 0)
-                        drop_speed[c] = random.uniform(3.0, 5.5)
-
-                if t >= self.LOCK_AFTER and lock_q:
-                    phase = (t - self.LOCK_AFTER) / (self.ANIM_TOTAL - self.LOCK_AFTER)
-                    n_target = int(phase * len(target_set))
-                    while len(locked) < n_target and lock_q:
-                        cell = lock_q.pop(0)
-                        locked[cell] = t
-
-                for r in range(nrows):
-                    for c in range(ncols):
-                        cell = (r, c)
-                        if cell in locked:
-                            age = t - locked[cell]
-                            color = self.FLASH if age < 0.12 else target_color
-                        else:
-                            dist = drop_y[c] - r
-                            if 0.0 <= dist < 0.7:
-                                color = self.RAIN_HEAD
-                            elif 0.7 <= dist < 2.5:
-                                color = self.RAIN_C1
-                            elif 2.5 <= dist < 4.5:
-                                color = self.RAIN_C2
-                            elif 4.5 <= dist < 6.5:
-                                color = self.RAIN_C3
-                            elif 6.5 <= dist < 9.0:
-                                color = self.RAIN_C4
-                            elif dist >= 9.0:
-                                color = self.RAIN_DARK
-                            else:
-                                color = self.color_off
-                        pixels[self.display.to_physical_index(r, c)] = color
-
-                if hasattr(pixels, "show"):
-                    pixels.show()
-                time.sleep(dt)
-        finally:
-            if prev_auto is not None:
-                pixels.auto_write = prev_auto
-
-        self.display.turn_off_all()
-        self.display.turn_on(list(target_set))
 
     def update_clock_matrix(self):
+        def _matrix_cells(eff_hour: int, disp_min: int) -> list[tuple[int, int]]:
+            cells = []
+            cells.extend(self._to_turn_on_word('IL'))
+            cells.extend(self._to_turn_on_word('EST'))
+
+            if eff_hour == 0:
+                cells.extend(self._to_turn_on_word('MINUIT'))
+            elif eff_hour == 12:
+                cells.extend(self._to_turn_on_word('MIDI'))
+            else:
+                h = eff_hour % 12
+                h_word = HOUR_MAP[h][0]
+                heure_word = HOUR_MAP[h][1]
+                cells.extend(self._to_turn_on_word(h_word))
+                cells.extend(self._to_turn_on_word(heure_word))
+
+            for w in MINUTE_WORDS.get(disp_min, []):
+                cells.extend(self._to_turn_on_word(w))
+
+            # Tiret du VINGT-CINQ
+            if disp_min in (25, 35):
+                cells.append((8, 5))
+
+            return cells
+
+        def _matrix_rain(target_cells: list[tuple[int, int]]) -> None:
+            """Falling-character animation from word_clock_matrix_tkinter.py, ported to LEDs.
+            Ends with target_cells lit in self.color_on and all other letter cells off."""
+            nrows = self.display.n_lines
+            ncols = self.display.n_leds_per_line
+            pixels = self.display.pixels
+            target_color = self.color_on
+            target_set = set(target_cells)
+
+            drop_y = [random.uniform(-nrows * 0.7, 0) for _ in range(ncols)]
+            drop_speed = [random.uniform(3.0, 5.5) for _ in range(ncols)]
+            lock_q = list(target_set)
+            random.shuffle(lock_q)
+            locked: dict[tuple[int, int], float] = {}
+
+            # auto_write triggers a strip refresh on every pixel assignment — far too
+            # slow at ~110 writes per frame. Batch the frame and call show() once.
+            prev_auto = getattr(pixels, "auto_write", None)
+            if prev_auto is not None:
+                pixels.auto_write = False
+
+            try:
+                t0 = time.time()
+                dt = self.ANIM_MS / 1000.0
+                while True:
+                    t = time.time() - t0
+                    if t >= self.ANIM_TOTAL:
+                        break
+
+                    for c in range(ncols):
+                        drop_y[c] += drop_speed[c] * dt
+                        if drop_y[c] > nrows + 9:
+                            drop_y[c] = random.uniform(-2, 0)
+                            drop_speed[c] = random.uniform(3.0, 5.5)
+
+                    if t >= self.LOCK_AFTER and lock_q:
+                        phase = (t - self.LOCK_AFTER) / (self.ANIM_TOTAL - self.LOCK_AFTER)
+                        n_target = int(phase * len(target_set))
+                        while len(locked) < n_target and lock_q:
+                            cell = lock_q.pop(0)
+                            locked[cell] = t
+
+                    for r in range(nrows):
+                        for c in range(ncols):
+                            cell = (r, c)
+                            if cell in locked:
+                                age = t - locked[cell]
+                                color = self.FLASH if age < 0.12 else target_color
+                            else:
+                                dist = drop_y[c] - r
+                                if 0.0 <= dist < 0.7:
+                                    color = self.RAIN_HEAD
+                                elif 0.7 <= dist < 2.5:
+                                    color = self.RAIN_C1
+                                elif 2.5 <= dist < 4.5:
+                                    color = self.RAIN_C2
+                                elif 4.5 <= dist < 6.5:
+                                    color = self.RAIN_C3
+                                elif 6.5 <= dist < 9.0:
+                                    color = self.RAIN_C4
+                                elif dist >= 9.0:
+                                    color = self.RAIN_DARK
+                                else:
+                                    color = self.color_off
+                            pixels[self.display.to_physical_index(r, c)] = color
+
+                    if hasattr(pixels, "show"):
+                        pixels.show()
+                    time.sleep(dt)
+            finally:
+                if prev_auto is not None:
+                    pixels.auto_write = prev_auto
+
+            self.display.turn_off_all()
+            self.display.turn_on(list(target_set))
         tested = False
         if os.path.exists("test.txt"):
             print("Test mode activated!")
@@ -561,336 +555,48 @@ class Clock:
         print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
 
         if self.anything_changed_except_corners(old_tuple) or tested:
-            cells = self._matrix_cells(eff_hour, disp_min)
+            cells = _matrix_cells(eff_hour, disp_min)
             print(f"Animating {len(cells)} target cells")
-            self._matrix_rain(cells)
+            _matrix_rain(cells)
 
         if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
             self.show_minutes_after_five_minutes(corner_leds)
 
+    def _to_turn_on_word(self, word: str) -> list[tuple[int, int]]:
+        cells = []
+        for row, c0, c1 in WORD_DEFS[word]:
+            for col in range(c0, c1 + 1):
+                cells.append((row, col))
+        return cells
+
     def show_hour(self, h: int):
-        if h == 0:
-            self.show_minuit()
-        elif h == 1 or h == 13:
-            self.show_une()
-            time.sleep(0.4)
-            self.show_heure()
-        elif h == 2 or h == 14:
-            self.show_deux()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 3 or h == 15:
-            self.show_trois()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 4 or h == 16:
-            self.show_quatre()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 5 or h == 17:
-            self.show_cinq()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 6 or h == 18:
-            self.show_six()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 7 or h == 19:
-            self.show_sept()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 8 or h == 20:
-            self.show_huit()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 9 or h == 21:
-            self.show_neuf()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 10 or h == 22:
-            self.show_dix()
-            time.sleep(0.4)
-            self.show_heures()
-        elif h == 11 or h == 23:
-            self.show_onze()
-            time.sleep(0.4)
-            self.show_heures()
+        to_turn_on = []
+        if h == 0 or h == 24:
+            to_turn_on.extend(self._to_turn_on_word("MINUIT"))
         elif h == 12:
-            self.show_midi()
-            time.sleep(0.4)
-        elif h == 24 or h == 0:
-            self.show_minuit()
-            time.sleep(0.4)
+            to_turn_on.extend(self._to_turn_on_word("MIDI"))
+        else:
+            assert h > 0 and h < 24 and h != 12
+            for w in HOUR_MAP[h % 12]:
+                to_turn_on.extend(self._to_turn_on_word(w))
+        return self.display.turn_on(to_turn_on)
+       
 
     def show_five_minutes(self, c: int):
+        """
+        c is between 0 and 11, and indicates how many 5 minutes we have after the hour.
+         0 means it's the hour sharp, 1 means it's between XX:05 and XX:09, etc.
+         We show the minutes in a way that makes sense in French.
+        """
         if c == 0:
             # Nothing
             pass
-        elif c == 1:
-            self.show_cinq_min()
-        elif c == 2:
-            self.show_dix_min()
-        elif c == 3:
-            self.show_et_above()
-            time.sleep(0.4)
-            self.show_quart()
-        elif c == 4:
-            self.show_vingt_min()
-        elif c == 5:
-            self.show_vingt_min()
-            time.sleep(0.5)
-            self.show_dash_min()
-            time.sleep(0.4)
-            self.show_cinq_min()
-        elif c == 6:
-            if random.randint(0, 1000) % 2 == 0:
-                self.show_et_above()
-            else:
-                self.show_et_below()
-            time.sleep(0.4)
-            self.show_demie()
-        elif c == 7:
-            self.show_moins()
-            time.sleep(0.4)
-            self.show_vingt_min()
-            time.sleep(0.5)
-            self.show_dash_min()
-            time.sleep(0.4)
-            self.show_cinq_min()
-
-        elif c == 8:
-            self.show_moins()
-            time.sleep(0.2)
-            self.show_vingt_min()
-        elif c == 9:
-            self.show_moins()
-            time.sleep(0.5)
-            self.show_quart()
-        elif c == 10:
-            self.show_moins()
-            time.sleep(0.4)
-            self.show_dix_min()
-        elif c == 11:
-            self.show_moins()
-            time.sleep(0.4)
-            self.show_cinq_min()
-
-
-    def show_il_est(self):
-        to_turn_on = []
-        to_turn_on.append((0, 0))
-        to_turn_on.append((0, 1))
-        to_turn_on.append((0, 3))
-        to_turn_on.append((0, 4))
-        to_turn_on.append((0, 5))
-        return self.display.turn_on(to_turn_on)
-
-    # Hours functions
-    def show_une(self):
-        to_turn_on = []
-        to_turn_on.append((2, 4))
-        to_turn_on.append((2, 5))
-        to_turn_on.append((2, 6))
-        return self.display.turn_on(to_turn_on)
-
-    def show_deux(self):
-        to_turn_on = []
-        to_turn_on.append((0, 7))
-        to_turn_on.append((0, 8))
-        to_turn_on.append((0, 9))
-        to_turn_on.append((0, 10))
-        return self.display.turn_on(to_turn_on)
-
-    def show_trois(self):
-        to_turn_on = []
-        to_turn_on.append((1, 6))
-        to_turn_on.append((1, 7))
-        to_turn_on.append((1, 8))
-        to_turn_on.append((1, 9))
-        to_turn_on.append((1, 10))
-        return self.display.turn_on(to_turn_on)
-
-    def show_quatre(self):
-        to_turn_on = []
-        to_turn_on.append((1, 0))
-        to_turn_on.append((1, 1))
-        to_turn_on.append((1, 2))
-        to_turn_on.append((1, 3))
-        to_turn_on.append((1, 4))
-        to_turn_on.append((1, 5))
-        return self.display.turn_on(to_turn_on)
-
-    def show_cinq(self):
-        to_turn_on = []
-        to_turn_on.append((3, 7))
-        to_turn_on.append((3, 8))
-        to_turn_on.append((3, 9))
-        to_turn_on.append((3, 10))
-        return self.display.turn_on(to_turn_on)
-
-    def show_six(self):
-        to_turn_on = []
-        to_turn_on.append((3, 4))
-        to_turn_on.append((3, 5))
-        to_turn_on.append((3, 6))
-        return self.display.turn_on(to_turn_on)
-
-    def show_sept(self):
-        to_turn_on = []
-        to_turn_on.append((2, 7))
-        to_turn_on.append((2, 8))
-        to_turn_on.append((2, 9))
-        to_turn_on.append((2, 10))
-        return self.display.turn_on(to_turn_on)
-
-    def show_huit(self):
-        to_turn_on = []
-        to_turn_on.append((3, 0))
-        to_turn_on.append((3, 1))
-        to_turn_on.append((3, 2))
-        to_turn_on.append((3, 3))
-        return self.display.turn_on(to_turn_on)
-
-    def show_neuf(self):
-        to_turn_on = []
-        to_turn_on.append((2, 0))
-        to_turn_on.append((2, 1))
-        to_turn_on.append((2, 2))
-        to_turn_on.append((2, 3))
-        return self.display.turn_on(to_turn_on)
-
-    def show_dix(self):
-        to_turn_on = []
-        to_turn_on.append((4, 2))
-        to_turn_on.append((4, 3))
-        to_turn_on.append((4, 4))
-        return self.display.turn_on(to_turn_on)
-
-    def show_onze(self):
-        to_turn_on = []
-        to_turn_on.append((5, 0))
-        to_turn_on.append((5, 1))
-        to_turn_on.append((5, 2))
-        to_turn_on.append((5, 3))
-        return self.display.turn_on(to_turn_on)
-
-    def show_midi(self):
-        to_turn_on = []
-        to_turn_on.append((4, 0))
-        to_turn_on.append((4, 1))
-        to_turn_on.append((4, 2))
-        to_turn_on.append((4, 3))
-        return self.display.turn_on(to_turn_on)
-
-    def show_minuit(self):
-        to_turn_on = []
-        to_turn_on.append((4, 5))
-        to_turn_on.append((4, 6))
-        to_turn_on.append((4, 7))
-        to_turn_on.append((4, 8))
-        to_turn_on.append((4, 9))
-        to_turn_on.append((4, 10))
-        return self.display.turn_on(to_turn_on)
-
-    def show_heure(self):
-        to_turn_on = []
-        to_turn_on.append((5, 5))
-        to_turn_on.append((5, 6))
-        to_turn_on.append((5, 7))
-        to_turn_on.append((5, 8))
-        to_turn_on.append((5, 9))
-        return self.display.turn_on(to_turn_on)
-
-    def show_heures(self):
-        to_turn_on = []
-        to_turn_on.append((5, 5))
-        to_turn_on.append((5, 6))
-        to_turn_on.append((5, 7))
-        to_turn_on.append((5, 8))
-        to_turn_on.append((5, 9))
-        to_turn_on.append((5, 10))
-        return self.display.turn_on(to_turn_on)
-
-    def show_am(self):
-        to_turn_on = []
-        to_turn_on.append((9, 9))
-        to_turn_on.append((9, 10))
-        return self.display.turn_on(to_turn_on)
-
-    def show_pm(self):
-        to_turn_on = []
-        to_turn_on.append((9, 8))
-        to_turn_on.append((9, 10))
-        return self.display.turn_on(to_turn_on)
-    # Minutes functions
-    def show_moins(self):
-        to_turn_on = []
-        to_turn_on.append((6, 0))
-        to_turn_on.append((6, 1))
-        to_turn_on.append((6, 2))
-        to_turn_on.append((6, 3))
-        to_turn_on.append((6, 4))
-        return self.display.turn_on(to_turn_on)
-
-    def show_et_above(self):
-        to_turn_on = []
-        to_turn_on.append((7, 0))
-        to_turn_on.append((7, 1))
-        return self.display.turn_on(to_turn_on)
-
-    def show_et_below(self):
-        to_turn_on = []
-        to_turn_on.append((9, 0))
-        to_turn_on.append((9, 1))
-        return self.display.turn_on(to_turn_on)
-
-    def show_cinq_min(self):
-        to_turn_on = []
-        to_turn_on.append((8, 6))
-        to_turn_on.append((8, 7))
-        to_turn_on.append((8, 8))
-        to_turn_on.append((8, 9))
-        return self.display.turn_on(to_turn_on)
-
-    def show_dix_min(self):
-        to_turn_on = []
-        to_turn_on.append((6, 8))
-        to_turn_on.append((6, 9))
-        to_turn_on.append((6, 10))
-        return self.display.turn_on(to_turn_on)
-
-    def show_quart(self):
-        to_turn_on = []
-        to_turn_on.append((7, 3))
-        to_turn_on.append((7, 4))
-        to_turn_on.append((7, 5))
-        to_turn_on.append((7, 6))
-        to_turn_on.append((7, 7))
-        return self.display.turn_on(to_turn_on)
-
-    def show_vingt_min(self):
-        to_turn_on = []
-        to_turn_on.append((8, 0))
-        to_turn_on.append((8, 1))
-        to_turn_on.append((8, 2))
-        to_turn_on.append((8, 3))
-        to_turn_on.append((8, 4))
-        return self.display.turn_on(to_turn_on)
-
-    def show_dash_min(self):
-        to_turn_on = []
-        to_turn_on.append((8, 5))
-        return self.display.turn_on(to_turn_on)
-
-    def show_demie(self):
-        to_turn_on = []
-        to_turn_on.append((9, 3))
-        to_turn_on.append((9, 4))
-        to_turn_on.append((9, 5))
-        to_turn_on.append((9, 6))
-        to_turn_on.append((9, 7))
-        return self.display.turn_on(to_turn_on)
-    
+        else:
+            words = MINUTE_WORDS.get(c*5, [])
+            to_turn_on = []
+            for w in words:
+                to_turn_on.extend(self._to_turn_on_word(w))
+            return self.display.turn_on(to_turn_on)
     def show_minutes_after_five_minutes(self, c: int):
         self.display.turn_off([(-1, 1), (-1, 2), (-1, 3), (-1, 4)])
         to_turn_on = []
@@ -903,3 +609,12 @@ class Clock:
         if c >= 4:
             to_turn_on.append((-1, 4))
         return self.display.turn_on(to_turn_on)
+
+
+    def show_il_est(self):
+        to_turn_on = []
+        to_turn_on.extend(self._to_turn_on_word("IL"))
+        to_turn_on.extend(self._to_turn_on_word("EST"))
+        return self.display.turn_on(to_turn_on)
+
+    
