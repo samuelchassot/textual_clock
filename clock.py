@@ -1,3 +1,4 @@
+from enum import Enum
 from math import floor
 import os
 import random
@@ -62,7 +63,17 @@ MINUTE_WORDS = {
     55: ['MOINS', 'CINQ_M'],
 }
 
+class UPDATE_STYLE(Enum):
+    SIMPLE = "simple"
+    MATRIX = "matrix"
 
+    def from_str(label: str):
+        if label == "simple":
+            return UPDATE_STYLE.SIMPLE
+        elif label == "matrix":
+            return UPDATE_STYLE.MATRIX
+        else:
+            raise NotImplementedError(f"Unknown update style: {label}") 
 class TimeProvider:
     def get_current_time(self) -> time.struct_time:
         return time.localtime()
@@ -204,6 +215,7 @@ class Clock:
     def __init__(self, display: DisplayLed, time_provider: TimeProvider = TimeProvider()) -> None:
         self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
+        self.UPDATE_STYLE_FILE_PATH = "res/update_style.current"
         self.SPECIAL_TIME_PERIODS_FILE_PATH = "res/special_time_periods.txt"
         self.SPECIAL_TIME_PERIODS = self.load_special_time_periods()
         self.SEPARATOR = ";"
@@ -259,6 +271,31 @@ class Clock:
         except Exception as e:
             print("WARNING: cannot read the current color! Using default color.\n", e)
             return self.DEFAULT_COLOR
+    
+    def update_current_update_style(self, update_style_str: str):
+        try:
+            update_style = UPDATE_STYLE.from_str(update_style_str)
+            with open(self.UPDATE_STYLE_FILE_PATH, "w") as f:
+                f.write(update_style.value)
+        except ValueError:
+            print("Invalid update style received: " + update_style_str)
+        except Exception as e:
+            print("ERROR: cannot write the update style to file!\n", e)
+
+    def read_current_update_style(self) -> UPDATE_STYLE:
+        try:
+            with open(self.UPDATE_STYLE_FILE_PATH, "r") as f:
+                style_str = f.readline().strip()
+                return UPDATE_STYLE.from_str(style_str)
+        except Exception as e:
+            print("WARNING: cannot read the update style! Using default style (SIMPLE).\n", e)
+            try:
+                with open(self.UPDATE_STYLE_FILE_PATH, "w") as f:
+                    f.write(UPDATE_STYLE.SIMPLE.value)
+            except Exception as e:
+                print("ERROR: cannot write the default update style to file!\n", e)
+            return UPDATE_STYLE.SIMPLE
+
         
     def load_special_time_periods(self):
         special_periods = []
@@ -350,7 +387,11 @@ class Clock:
                 os.remove("test.txt")
                 self.display.turn_off_all()
                 reload = True
-            self.update_clock(delay_between_words_seconds, reload)
+            current_update_style = self.read_current_update_style()
+            if current_update_style == UPDATE_STYLE.MATRIX:
+                self.update_clock_matrix()
+            else:
+                self.update_clock(delay_between_words_seconds, reload)
             time.sleep(refresh_rate_seconds)
 
     def test_loop(self):

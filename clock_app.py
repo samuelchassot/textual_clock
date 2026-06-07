@@ -60,6 +60,29 @@ def color_post():
     store_color(color_tuple)
     return "Color stored", 200
 
+@app.route("/update_style", methods=["POST"])
+def update_style_post():
+    print(request.get_data())
+    update_style = request.get_json()
+    print("Received JSON update style: ", update_style)
+    if update_style == None or "update_style" not in update_style:
+        return "ERROR", 400
+    update_style_str = update_style["update_style"]
+    if clock_update_update_style(update_style_str):
+        return "Update style stored", 200
+    else:
+        return "ERROR: Invalid update style", 400
+    
+@app.route("/update_style", methods=["GET"])
+def update_style_get():
+    update_style = clk.read_current_update_style()
+    return jsonify({"update_style": update_style.value}), 200
+
+@app.route("/update_style/options", methods=["GET"])
+def update_style_options():
+    options = [style.value for style in clock.UpdateStyle]
+    return jsonify({"update_style_options": options}), 200
+
 @app.route("/special_time_periods", methods=["POST"])
 def special_time_periods_post():
     print(request.get_data())
@@ -91,6 +114,15 @@ def store_color(color_tuple: tuple[int, int, int]) -> None:
         print("Writing color: " + to_write)
         f.write(to_write)
         f.close()
+
+def clock_update_update_style(update_style_str: str) -> bool:
+    try:
+        clk.update_current_update_style(update_style_str)
+        print("Updated clock update style to: " + update_style_str)
+        return True
+    except ValueError:
+        print("Invalid update style received: " + update_style_str)
+        return False
 
 
 def read_current_color() -> tuple[int, int, int]:
