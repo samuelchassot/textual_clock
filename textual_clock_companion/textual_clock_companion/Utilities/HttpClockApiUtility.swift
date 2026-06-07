@@ -31,6 +31,13 @@ struct LivenessMessage: Decodable {
     let liveness: Bool
 }
 
+struct UpdateStyleResponse: Decodable {
+    let update_style: String
+}
+
+struct UpdateStyleOptionsResponse: Decodable {
+    let update_style_options: [String]
+}
 
 struct HttpClockApiUtility {
     // Send an HTTP POST request to the /color
@@ -161,6 +168,62 @@ struct HttpClockApiUtility {
         } else {
             onError("Cannot create url for \(urlString)")
         }
+    }
+    
+    static func getUpdateStyle(clockAddress: String, onSuccess: @escaping (String) -> Void, onError: @escaping (String) -> Void) {
+        let urlString = "http://\(clockAddress)/update_style"
+        guard let url = URL(string: urlString) else {
+            onError("Cannot create url for \(urlString)")
+            return
+        }
+        var urlRequest = URLRequest(url: url)
+        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpMethod = "GET"
+        sendRequest(request: urlRequest, onSuccess: { data in
+            if let resp = try? JSONDecoder().decode(UpdateStyleResponse.self, from: data) {
+                onSuccess(resp.update_style)
+            } else {
+                onError("Cannot decode update_style response")
+            }
+        }, onError: onError)
+    }
+
+    static func getUpdateStyleOptions(onSuccess: @escaping ([String]) -> Void, onError: @escaping (String) -> Void) {
+        let urlString = "http://textualclock.local:4242/update_style/options"
+        guard let url = URL(string: urlString) else {
+            onError("Cannot create url for \(urlString)")
+            return
+        }
+        var urlRequest = URLRequest(url: url)
+        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpMethod = "GET"
+        sendRequest(request: urlRequest, onSuccess: { data in
+            if let resp = try? JSONDecoder().decode(UpdateStyleOptionsResponse.self, from: data) {
+                onSuccess(resp.update_style_options)
+            } else {
+                onError("Cannot decode update_style_options response")
+            }
+        }, onError: onError)
+    }
+
+    static func postUpdateStyle(styleName: String, onSuccess: @escaping (String) -> Void, onError: @escaping (String) -> Void) {
+        let urlString = "http://textualclock.local:4242/update_style"
+        guard let url = URL(string: urlString) else {
+            onError("Cannot create url for \(urlString)")
+            return
+        }
+        let payloadDict = ["update_style": styleName]
+        guard let payload = try? JSONEncoder().encode(payloadDict) else {
+            onError("Cannot encode the json payload!")
+            return
+        }
+        var urlRequest = URLRequest(url: url)
+        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpMethod = "POST"
+        urlRequest.httpBody = payload
+        sendRequest(request: urlRequest, onSuccess: { data in
+            onSuccess("Update style POST successful!")
+        }, onError: onError)
     }
     
     private static func sendRequest(request:URLRequest, onSuccess: @escaping (Data) -> Void, onError: @escaping (String) -> Void){
