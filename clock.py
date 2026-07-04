@@ -590,12 +590,17 @@ class Clock:
                     if hasattr(pixels, "show"):
                         pixels.show()
                     time.sleep(dt)
+
+                # Dernière frame batchée: éteint tout puis allume la cible, un seul
+                # show() — évite le clignotement noir entre l'extinction et l'allumage.
+                pixels.fill(self.color_off)
+                for cell in target_set:
+                    pixels[self.display.to_physical_index(*cell)] = target_color
+                if hasattr(pixels, "show"):
+                    pixels.show()
             finally:
                 if prev_auto is not None:
                     pixels.auto_write = prev_auto
-
-            self.display.turn_off_all()
-            self.display.turn_on(list(target_set))
         tested = False
         if os.path.exists("test.txt"):
             print("Test mode activated!")
