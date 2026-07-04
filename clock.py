@@ -5,6 +5,16 @@ import random
 import time
 
 
+def lerp_color(c1: tuple[int, int, int], c2: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    """Interpolation linéaire entre deux couleurs RGB, t ∈ [0,1]."""
+    t = max(0.0, min(1.0, t))
+    return (
+        int(c1[0] + (c2[0] - c1[0]) * t),
+        int(c1[1] + (c2[1] - c1[1]) * t),
+        int(c1[2] + (c2[2] - c1[2]) * t),
+    )
+
+
 WORD_DEFS = {
     'IL':      [(0, 0,  1)],
     'EST':     [(0, 3,  5)],
@@ -200,9 +210,11 @@ class DisplayLed:
         return debug_str
 
 class Clock:
-    ANIM_MS    = 40
-    ANIM_TOTAL = 5.0
-    LOCK_AFTER = 2.0
+    ANIM_MS    = 40     # intervalle de frame (~25 fps)
+    ANIM_TOTAL = 10.0   # durée totale en secondes
+    LOCK_AFTER = 3.0    # début du figement des lettres cibles
+    LOCK_END   = 8.0    # toutes les cellules cibles figées à ce point
+    FADE_CELL  = 1.2    # durée du fondu vert→cible par cellule (secondes)
 
     RAIN_HEAD = (223, 255, 223)
     RAIN_C1   = (  0, 255,  65)
@@ -210,7 +222,6 @@ class Clock:
     RAIN_C3   = (  0, 128,  32)
     RAIN_C4   = (  0,  69,  16)
     RAIN_DARK = (  0,  24,   0)
-    FLASH     = (255, 255, 255)
 
     def __init__(self, display: DisplayLed, time_provider: TimeProvider = TimeProvider()) -> None:
         self.time_provider = time_provider
@@ -506,7 +517,7 @@ class Clock:
             drop_speed = [random.uniform(3.0, 5.5) for _ in range(ncols)]
             lock_q = list(target_set)
             random.shuffle(lock_q)
-            locked: dict[tuple[int, int], float] = {}
+            locked: dict[tuple[int, int], float] = {}   # cell -> instant où elle s'est figée
 
             # auto_write triggers a strip refresh on every pixel assignment — far too
             # slow at ~110 writes per frame. Batch the frame and call show() once.
@@ -522,41 +533,58 @@ class Clock:
                     if t >= self.ANIM_TOTAL:
                         break
 
+                    # Ralentissement progressif de la pluie dès le début du figement
+                    if t < self.LOCK_AFTER:
+                        speed_mult = 1.0
+                    else:
+                        raw = 1.0 - (t - self.LOCK_AFTER) / (self.LOCK_END - self.LOCK_AFTER)
+                        speed_mult = max(0.04, raw)
+
                     for c in range(ncols):
-                        drop_y[c] += drop_speed[c] * dt
+                        drop_y[c] += drop_speed[c] * dt * speed_mult
                         if drop_y[c] > nrows + 9:
                             drop_y[c] = random.uniform(-2, 0)
                             drop_speed[c] = random.uniform(3.0, 5.5)
 
                     if t >= self.LOCK_AFTER and lock_q:
-                        phase = (t - self.LOCK_AFTER) / (self.ANIM_TOTAL - self.LOCK_AFTER)
+                        phase = min(1.0, (t - self.LOCK_AFTER) / (self.LOCK_END - self.LOCK_AFTER))
                         n_target = int(phase * len(target_set))
                         while len(locked) < n_target and lock_q:
                             cell = lock_q.pop(0)
                             locked[cell] = t
 
+                    # Fondu des cellules non-cibles vers l'éteint (dernière seconde)
+                    rain_fade = min(1.0, max(0.0, (t - self.LOCK_END) / (self.ANIM_TOTAL - self.LOCK_END))) \
+                                if t > self.LOCK_END else 0.0
+
                     for r in range(nrows):
                         for c in range(ncols):
                             cell = (r, c)
                             if cell in locked:
+                                # Fondu vert → cible avec lissage (smoothstep)
                                 age = t - locked[cell]
-                                color = self.FLASH if age < 0.12 else target_color
+                                f = min(1.0, age / self.FADE_CELL)
+                                f = f * f * (3 - 2 * f)   # smoothstep
+                                color = lerp_color(self.RAIN_C1, target_color, f)
                             else:
                                 dist = drop_y[c] - r
                                 if 0.0 <= dist < 0.7:
-                                    color = self.RAIN_HEAD
+                                    rain_color = self.RAIN_HEAD
                                 elif 0.7 <= dist < 2.5:
-                                    color = self.RAIN_C1
+                                    rain_color = self.RAIN_C1
                                 elif 2.5 <= dist < 4.5:
-                                    color = self.RAIN_C2
+                                    rain_color = self.RAIN_C2
                                 elif 4.5 <= dist < 6.5:
-                                    color = self.RAIN_C3
+                                    rain_color = self.RAIN_C3
                                 elif 6.5 <= dist < 9.0:
-                                    color = self.RAIN_C4
+                                    rain_color = self.RAIN_C4
                                 elif dist >= 9.0:
-                                    color = self.RAIN_DARK
+                                    rain_color = self.RAIN_DARK
                                 else:
-                                    color = self.color_off
+                                    rain_color = self.color_off
+                                # Estompe vers l'éteint en fin d'animation
+                                color = lerp_color(rain_color, self.color_off, rain_fade) \
+                                        if rain_fade > 0 else rain_color
                             pixels[self.display.to_physical_index(r, c)] = color
 
                     if hasattr(pixels, "show"):
