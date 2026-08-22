@@ -48,5 +48,5 @@ fi
 if [ "$CLOCK_DISPLAY" = "led" ]; then
   exec sudo CLOCK_DISPLAY="$CLOCK_DISPLAY" venv/bin/python clock_app.py
 else
-  exec venv/bin/python clock_app.py
+  exec CLOCK_DISPLAY="$CLOCK_DISPLAY" venv/bin/python clock_app.py
 fi
