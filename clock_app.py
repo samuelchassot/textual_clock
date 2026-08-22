@@ -149,6 +149,8 @@ def read_current_color() -> tuple[int, int, int]:
 if __name__ == "__main__":
     clock_display = os.environ.get("CLOCK_DISPLAY", "led")
 
+    print("CLOCK_DISPLAY: " + clock_display)
+
     if clock_display == "screen":
         import pygame
         from screen_display import DisplayScreen
