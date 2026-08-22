@@ -1,6 +1,6 @@
 # DO NOT REMOVE, IT IS THE ENTRY POINT FOR THE CLOCK
 
-CLOCK_DISPLAY="${1:-led}"
+export CLOCK_DISPLAY="${1:-led}"
 
 if [ "$CLOCK_DISPLAY" != "led" ] && [ "$CLOCK_DISPLAY" != "screen" ]; then
   echo "Usage: $0 [led|screen]"
