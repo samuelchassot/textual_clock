@@ -157,8 +157,8 @@ if __name__ == "__main__":
 
         SCREEN_SIZE = 720
         pygame.init()
-        pygame.mouse.set_visible(False)
         surface = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE), pygame.FULLSCREEN | pygame.NOFRAME)
+        pygame.mouse.set_visible(False)
         display = DisplayScreen(cols=11, rows=10, screen_width=SCREEN_SIZE, screen_height=SCREEN_SIZE, surface=surface)
     else:
         import board
