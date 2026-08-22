@@ -1,6 +1,9 @@
 import pygame
 
-class DisplayScreen: 
+from display import Display
+
+
+class DisplayScreen(Display):
 
     def __init__(self, cols: int, rows: int, screen_width: int, screen_height: int, surface: pygame.Surface) -> None:
 
@@ -43,8 +46,8 @@ class DisplayScreen:
         self.surface.fill(self.color_off)
         pygame.display.flip()
     
-    def turn_on_all(self):
-        self.surface.fill(self.color_on)
+    def turn_on_all(self, color: tuple[int, int, int]) -> None:
+        self.surface.fill(color)
         pygame.display.flip()
     
     def turn_off(self, indices: list[tuple[int, int]]):

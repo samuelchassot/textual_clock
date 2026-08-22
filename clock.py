@@ -4,6 +4,7 @@ import os
 import random
 import time
 
+from display import Display
 from led_display import DisplayLed
 
 
@@ -110,7 +111,7 @@ class Clock:
     RAIN_C4   = (  0,  69,  16)
     RAIN_DARK = (  0,  24,   0)
 
-    def __init__(self, display: DisplayLed, time_provider: TimeProvider = TimeProvider()) -> None:
+    def __init__(self, display: Display, time_provider: TimeProvider = TimeProvider()) -> None:
         self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
         self.UPDATE_STYLE_FILE_PATH = "res/update_style.current"

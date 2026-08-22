@@ -1,4 +1,7 @@
-class DisplayLed: 
+from display import Display
+
+
+class DisplayLed(Display):
 
     def __init__(self, n_leds_per_line: int, led_array) -> None:
         self.n_leds_per_line = n_leds_per_line
