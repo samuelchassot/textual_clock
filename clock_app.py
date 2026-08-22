@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify
 import os
 import clock
-import board
-import neopixel
 import threading
 
 app = Flask(__name__)
@@ -149,10 +147,27 @@ def read_current_color() -> tuple[int, int, int]:
 
 
 if __name__ == "__main__":
-    n_leds_per_line = 11
-    n_leds = n_leds_per_line * 10 + 4 # 10 lines of 11 LEDs + 4 LEDs for the minutes in the corners
-    pixels = neopixel.NeoPixel(board.D18, n_leds)
-    display = clock.DisplayLed(n_leds_per_line, pixels)
+    clock_display = os.environ.get("CLOCK_DISPLAY", "led")
+
+    if clock_display == "screen":
+        import pygame
+        from screen_display import DisplayScreen
+
+        SCREEN_SIZE = 720
+        pygame.init()
+        pygame.mouse.set_visible(False)
+        surface = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE), pygame.FULLSCREEN | pygame.NOFRAME)
+        display = DisplayScreen(cols=11, rows=10, screen_width=SCREEN_SIZE, screen_height=SCREEN_SIZE, surface=surface)
+    else:
+        import board
+        import neopixel
+        from led_display import DisplayLed
+
+        n_leds_per_line = 11
+        n_leds = n_leds_per_line * 10 + 4
+        pixels = neopixel.NeoPixel(board.D18, n_leds)
+        display = DisplayLed(n_leds_per_line, pixels)
+
     clk = clock.Clock(display)
     refresh_rate_seconds = 5
     delay_between_words_seconds = 0.2
