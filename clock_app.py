@@ -173,6 +173,6 @@ if __name__ == "__main__":
     clk = clock.Clock(display)
     refresh_rate_seconds = 5
     delay_between_words_seconds = 0.2
-    clock_thread = threading.Thread(target=clk.run_loop, args=(refresh_rate_seconds, delay_between_words_seconds))
-    clock_thread.start()
-    app.run(host=HOST, port=PORT)
+    flask_thread = threading.Thread(target=lambda: app.run(host=HOST, port=PORT), daemon=True)
+    flask_thread.start()
+    clk.run_loop(refresh_rate_seconds, delay_between_words_seconds)
