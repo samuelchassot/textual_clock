@@ -36,4 +36,11 @@ else
 fi
 
 # Run app as root (ONLY here)
-exec sudo venv/bin/python clock_app.py
+CLOCK_DISPLAY="${1:-led}"
+
+if [ "$CLOCK_DISPLAY" != "led" ] && [ "$CLOCK_DISPLAY" != "screen" ]; then
+  echo "Usage: $0 [led|screen]"
+  exit 1
+fi
+
+exec sudo CLOCK_DISPLAY="$CLOCK_DISPLAY" venv/bin/python clock_app.py
