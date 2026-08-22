@@ -6,7 +6,7 @@ import time
 
 
 def lerp_color(c1: tuple[int, int, int], c2: tuple[int, int, int], t: float) -> tuple[int, int, int]:
-    """Interpolation linéaire entre deux couleurs RGB, t ∈ [0,1]."""
+    """Linear interpolation between two RGB colors, t ∈ [0,1]."""
     t = max(0.0, min(1.0, t))
     return (
         int(c1[0] + (c2[0] - c1[0]) * t),
