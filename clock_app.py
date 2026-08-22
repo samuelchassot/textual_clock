@@ -6,7 +6,7 @@ import threading
 app = Flask(__name__)
 clock_thread = None
 
-HOST = "textualclock.local"
+HOST = os.environ.get("CLOCK_HOST", "textualclock.local")
 PORT = 4242
 
 CURRENT_COLOR_FILE_PATH = "res/color.current"
