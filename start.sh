@@ -44,5 +44,9 @@ else
   echo "No internet connection. Skipping updates..."
 fi
 
-# Run app as root (ONLY here)
-exec sudo CLOCK_DISPLAY="$CLOCK_DISPLAY" venv/bin/python clock_app.py
+# LED requires root for GPIO access; screen runs as current user
+if [ "$CLOCK_DISPLAY" = "led" ]; then
+  exec sudo CLOCK_DISPLAY="$CLOCK_DISPLAY" venv/bin/python clock_app.py
+else
+  exec venv/bin/python clock_app.py
+fi
