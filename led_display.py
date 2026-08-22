@@ -1,4 +1,4 @@
-class DisplayLed:
+class DisplayLed: 
 
     def __init__(self, n_leds_per_line: int, led_array) -> None:
         self.n_leds_per_line = n_leds_per_line
@@ -34,8 +34,8 @@ class DisplayLed:
     # 8  V I N G T - C I N Q U
     # 9  E T S D E M I E P A M
     #
-    # LEDs are soldered in a back-and-forth pattern:
-    #
+    # BUT the LEDs are soldered in a back and forth motion, which gives these indices:
+
     #   111                                            112
     #       0   1   2   3   4   5   6   7   8   9   10
     #       21  20  19  18  17  16  15  14  13  12  11
@@ -49,6 +49,15 @@ class DisplayLed:
     #       109 108 107 106 105 104 103 102 101 100 99
     #   110                                            113
 
+    # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
+    # Use 
+    #         (-1, 1): top left 
+    #         (-1, 2): top right
+    #         (-1, 3): bottom right
+    #         (-1, 4): bottom left
+    #       
+    #       for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
+        
     def to_physical_index(self, i: int, j: int) -> int:
         """Convert virtual (row, col) to physical LED index.
         Use (-1, 1..4) for the four corner minute LEDs:
@@ -57,31 +66,49 @@ class DisplayLed:
         """
         if i == -1:
             return int(self.n_leds_per_line * self.n_lines + (j % 4))
+            # if j == 1:
+            #     return int(self.n_leds_per_line * self.n_lines + (j % 4))
+            # elif j == 2:
+            #     return int(self.n_leds_per_line * self.n_lines + 2)
+            # elif j == 3:
+            #     return int(self.n_leds_per_line * self.n_lines + 3)
+            # elif j == 4:
+            #     return int(self.n_leds_per_line * self.n_lines)
         if i % 2 == 0:
             return int(i * self.n_leds_per_line + j)
         else:
             return int(i * self.n_leds_per_line + (self.n_leds_per_line - j - 1))
 
+
     def turn_off_all(self):
         self.pixels.fill(self.color_off)
-
+    
     def turn_on_all(self, color: tuple[int, int, int]):
         self.pixels.fill(color)
-
+    
     def turn_off(self, indices: list[tuple[int, int]]):
         for i, j in indices:
             index = self.to_physical_index(i, j)
             self.pixels[index] = self.color_off
 
+
     def turn_on(self, indices: list[tuple[int, int]]):
-        """Turn on LEDs at the given (row, col) positions.
-        Use (-1, 1..4) for the four corner minute LEDs.
+        """Turn on the LEDs at the positions given by the tuples in the list. The tuple gives the line then the column.
+           Use 
+             (-1, 1): top left 
+             (-1, 2): top right
+             (-1, 3): bottom right
+             (-1, 4): bottom left
+           
+           for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
+        
         """
+
         debug_str = ""
         for i, j in indices:
             index = self.to_physical_index(i, j)
             self.pixels[index] = self.color_on
-            if 0 <= index < len(self.debug_characters):
+            if index >= 0 and index < len(self.debug_characters):
                 debug_str += self.debug_characters[index]
             else:
                 if i == -1:
