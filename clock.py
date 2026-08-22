@@ -42,6 +42,7 @@ WORD_DEFS = {
     'ET_Q':    [(7, 0,  1)],
     'QUART':   [(7, 3,  7)],
     'VINGT':   [(8, 0,  4)],
+    'TIRET':   [(8, 5,  5)],
     'CINQ_M':  [(8, 6,  9)],
     'ET_D':    [(9, 0,  1)],
     'DEMIE':   [(9, 3,  7)],
@@ -67,9 +68,9 @@ MINUTE_WORDS = {
     10: ['DIX_M'],
     15: ['ET_Q', 'QUART'],
     20: ['VINGT'],
-    25: ['VINGT', 'CINQ_M'],
+    25: ['VINGT', 'TIRET', 'CINQ_M'],
     30: ['ET_D', 'DEMIE'],
-    35: ['MOINS', 'VINGT', 'CINQ_M'],
+    35: ['MOINS', 'VINGT', 'TIRET', 'CINQ_M'],
     40: ['MOINS', 'VINGT'],
     45: ['MOINS', 'QUART'],
     50: ['MOINS', 'DIX_M'],
@@ -385,10 +386,6 @@ class Clock:
 
             for w in MINUTE_WORDS.get(disp_min, []):
                 cells.extend(self._to_turn_on_word(w))
-
-            # Tiret du VINGT-CINQ
-            if disp_min in (25, 35):
-                cells.append((8, 5))
 
             return cells
 
