@@ -1,10 +1,9 @@
 # DO NOT REMOVE, IT IS THE ENTRY POINT FOR THE CLOCK
 
 export CLOCK_DISPLAY="${1:-led}"
-export CLOCK_HOST="${2:-textualclock.local}"
 
 if [ "$CLOCK_DISPLAY" != "led" ] && [ "$CLOCK_DISPLAY" != "screen" ]; then
-  echo "Usage: $0 [led|screen] [host]"
+  echo "Usage: $0 [led|screen]"
   exit 1
 fi
 
