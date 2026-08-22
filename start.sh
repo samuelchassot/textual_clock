@@ -46,7 +46,7 @@ fi
 
 # LED requires root for GPIO access; screen runs as current user
 if [ "$CLOCK_DISPLAY" = "led" ]; then
-  exec sudo CLOCK_DISPLAY="$CLOCK_DISPLAY" venv/bin/python clock_app.py
+  exec sudo -E venv/bin/python clock_app.py
 else
-  exec CLOCK_DISPLAY="$CLOCK_DISPLAY" venv/bin/python clock_app.py
+  exec venv/bin/python clock_app.py
 fi
