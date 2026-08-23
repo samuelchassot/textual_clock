@@ -3,13 +3,13 @@ from display import Display
 
 class DisplayLed(Display):
 
-    def __init__(self, n_leds_per_line: int, led_array) -> None:
-        self.n_leds_per_line = n_leds_per_line
-        self.pixels = led_array
-        self.n_lines = (len(led_array) - 4) // n_leds_per_line
+    def __init__(self, n_leds_per_row: int, led_array) -> None:
         assert len(led_array) == 114
+        self.pixels = led_array
+        self.cols = n_leds_per_row
+        self.rows = (len(led_array) - 4) // n_leds_per_row
         self.color_off = (0, 0, 0)
-        self.color_on = (255, 255, 255)
+        self.auto_commit = True
         self.debug_characters = [
             "I", "L", "N", "E", "S", "T", "O", "D", "E", "U", "X",
             "Q", "U", "A", "T", "R", "E", "T", "R", "O", "I", "S",
@@ -22,6 +22,8 @@ class DisplayLed(Display):
             "V", "I", "N", "G", "T", "-", "C", "I", "N", "Q", "U",
             "E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M",
         ]
+        if hasattr(self.pixels, "auto_write"):
+            self.pixels.auto_write = False
 
     # Letters on the clock:
     #
@@ -37,8 +39,8 @@ class DisplayLed(Display):
     # 8  V I N G T - C I N Q U
     # 9  E T S D E M I E P A M
     #
-    # BUT the LEDs are soldered in a back and forth motion, which gives these indices:
-
+    # LEDs are soldered in a back-and-forth pattern:
+    #
     #   111                                            112
     #       0   1   2   3   4   5   6   7   8   9   10
     #       21  20  19  18  17  16  15  14  13  12  11
@@ -68,54 +70,44 @@ class DisplayLed(Display):
           (-1, 3): bottom-right  (-1, 4): bottom-left
         """
         if i == -1:
-            return int(self.n_leds_per_line * self.n_lines + (j % 4))
-            # if j == 1:
-            #     return int(self.n_leds_per_line * self.n_lines + (j % 4))
-            # elif j == 2:
-            #     return int(self.n_leds_per_line * self.n_lines + 2)
-            # elif j == 3:
-            #     return int(self.n_leds_per_line * self.n_lines + 3)
-            # elif j == 4:
-            #     return int(self.n_leds_per_line * self.n_lines)
+            return int(self.cols * self.rows + (j % 4))
         if i % 2 == 0:
-            return int(i * self.n_leds_per_line + j)
+            return int(i * self.cols + j)
         else:
-            return int(i * self.n_leds_per_line + (self.n_leds_per_line - j - 1))
+            return int(i * self.cols + (self.cols - j - 1))
 
+    def commit(self) -> None:
+        if hasattr(self.pixels, "show"):
+            self.pixels.show()
 
-    def turn_off_all(self):
+    def turn_off_all(self) -> None:
         self.pixels.fill(self.color_off)
-    
-    def turn_on_all(self, color: tuple[int, int, int]):
+        if self.auto_commit:
+            self.commit()
+
+    def turn_on_all(self, color: tuple[int, int, int]) -> None:
         self.pixels.fill(color)
-    
-    def turn_off(self, indices: list[tuple[int, int]]):
+        if self.auto_commit:
+            self.commit()
+
+    def turn_off(self, indices: list[tuple[int, int]]) -> None:
         for i, j in indices:
-            index = self.to_physical_index(i, j)
-            self.pixels[index] = self.color_off
+            self.pixels[self.to_physical_index(i, j)] = self.color_off
+        if self.auto_commit:
+            self.commit()
 
-
-    def turn_on(self, indices: list[tuple[int, int]]):
-        """Turn on the LEDs at the positions given by the tuples in the list. The tuple gives the line then the column.
-           Use 
-             (-1, 1): top left 
-             (-1, 2): top right
-             (-1, 3): bottom right
-             (-1, 4): bottom left
-           
-           for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
-        
+    def turn_on(self, indices: list[tuple[int, int]], color: tuple[int, int, int]) -> str:
+        """Turn on LEDs at the given (row, col) positions with the given color.
+        Use (-1, 1..4) for the four corner minute LEDs.
         """
-
         debug_str = ""
         for i, j in indices:
             index = self.to_physical_index(i, j)
-            self.pixels[index] = self.color_on
-            if index >= 0 and index < len(self.debug_characters):
+            self.pixels[index] = color
+            if 0 <= index < len(self.debug_characters):
                 debug_str += self.debug_characters[index]
             else:
-                if i == -1:
-                    debug_str += f"corner{j}"
-                else:
-                    debug_str += f"({i},{j})"
+                debug_str += f"corner{j}" if i == -1 else f"({i},{j})"
+        if self.auto_commit:
+            self.commit()
         return debug_str

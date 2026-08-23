@@ -302,18 +302,15 @@ class Clock:
         time.sleep(0.8)
         print("turning on")
         self.color_on = self.read_current_color()
-        self.display.color_on = self.color_on
 
-        for i in range(self.display.n_lines):
-            for j in range(self.display.n_leds_per_line):
-                # physical_index = to_physical_index(i, j, n_leds_per_line)
-                # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
-                self.display.turn_on([(i,j)])
+        for i in range(self.display.rows):
+            for j in range(self.display.cols):
+                self.display.turn_on([(i, j)], self.color_on)
                 time.sleep(0.5)
-        
+
         # turn on the 4 corners
         for i in range(1, 5):
-            self.display.turn_on([(-1,i)])
+            self.display.turn_on([(-1, i)], self.color_on)
             time.sleep(0.5)
             
         time.sleep(2)
@@ -341,8 +338,6 @@ class Clock:
             if (h >= period.start_time[0] and h <= period.end_time[0]) and (minutes >= period.start_time[1] and minutes <= period.end_time[1]):
                 self.color_on = period.color
                 break
-        self.display.color_on = self.color_on
-
         assert(residual_minutes >= 0 and residual_minutes < 5)
 
         old_tuple = self.last_h_five_min_residual_minutes_color
@@ -508,7 +503,6 @@ class Clock:
             if (eff_hour >= period.start_time[0] and eff_hour <= period.end_time[0]) and (disp_min >= period.start_time[1] and disp_min <= period.end_time[1]):
                 self.color_on = period.color
                 break
-        self.display.color_on = self.color_on
 
         old_tuple = self.last_h_five_min_residual_minutes_color
         self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
@@ -541,8 +535,8 @@ class Clock:
             assert h > 0 and h < 24 and h != 12
             for w in HOUR_MAP[h % 12]:
                 to_turn_on.extend(self._to_turn_on_word(w))
-        return self.display.turn_on(to_turn_on)
-       
+        return self.display.turn_on(to_turn_on, self.color_on)
+
 
     def show_five_minutes(self, c: int):
         """
@@ -558,7 +552,7 @@ class Clock:
             to_turn_on = []
             for w in words:
                 to_turn_on.extend(self._to_turn_on_word(w))
-            return self.display.turn_on(to_turn_on)
+            return self.display.turn_on(to_turn_on, self.color_on)
     def show_minutes_after_five_minutes(self, c: int):
         self.display.turn_off([(-1, 1), (-1, 2), (-1, 3), (-1, 4)])
         to_turn_on = []
@@ -570,13 +564,12 @@ class Clock:
             to_turn_on.append((-1, 3))
         if c >= 4:
             to_turn_on.append((-1, 4))
-        return self.display.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on, self.color_on)
 
 
     def show_il_est(self):
         to_turn_on = []
         to_turn_on.extend(self._to_turn_on_word("IL"))
         to_turn_on.extend(self._to_turn_on_word("EST"))
-        return self.display.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on, self.color_on)
 
-    
