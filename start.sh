@@ -1,13 +1,14 @@
 # DO NOT REMOVE, IT IS THE ENTRY POINT FOR THE CLOCK
 
-export CLOCK_DISPLAY="${1:-led}"
+CLOCK_PATH="${1}"
+export CLOCK_DISPLAY="${2:-led}"
 
-if [ "$CLOCK_DISPLAY" != "led" ] && [ "$CLOCK_DISPLAY" != "screen" ]; then
-  echo "Usage: $0 [led|screen]"
+if [ -z "$CLOCK_PATH" ] || [ "$CLOCK_DISPLAY" != "led" ] && [ "$CLOCK_DISPLAY" != "screen" ]; then
+  echo "Usage: $0 <path> [led|screen]"
   exit 1
 fi
 
-cd /home/$(whoami)/textual_clock/
+cd "$CLOCK_PATH"
 
 # Check for internet connection, 4 attempts with a 5 second interval
 i=0
