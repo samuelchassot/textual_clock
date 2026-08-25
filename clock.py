@@ -387,8 +387,8 @@ class Clock:
         def _matrix_rain(target_cells: list[tuple[int, int]]) -> None:
             """Falling-character animation from word_clock_matrix_tkinter.py, ported to LEDs.
             Ends with target_cells lit in self.color_on and all other letter cells off."""
-            nrows = self.display.n_lines
-            ncols = self.display.n_leds_per_line
+            nrows = self.display.rows
+            ncols = self.display.cols
             pixels = self.display.pixels
             target_color = self.color_on
             target_set = set(target_cells)
