@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 import os
+import subprocess
+import sys
 import clock
 import threading
 
@@ -146,6 +148,26 @@ def read_current_color() -> tuple[int, int, int]:
         return DEFAULT_COLOR
 
 
+def _stop_own_systemd_service() -> None:
+    """Stop the systemd service we're running under (if any).
+    Reads our own cgroup path to find the .service unit name, then asks
+    systemd to stop it — so it stays stopped until reboot or manual start.
+    """
+    try:
+        with open("/proc/self/cgroup") as f:
+            for line in f:
+                path = line.strip().split(":", 2)[-1]
+                for segment in reversed(path.split("/")):
+                    if segment.endswith(".service"):
+                        subprocess.run(
+                            ["sudo", "systemctl", "stop", segment],
+                            check=False, timeout=5,
+                        )
+                        return
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
     clock_display = os.environ.get("CLOCK_DISPLAY", "led")
 
@@ -178,3 +200,7 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=lambda: app.run(host=HOST, port=PORT), daemon=True)
     flask_thread.start()
     clk.run_loop(refresh_rate_seconds, delay_between_words_seconds)
+    # run_loop only returns on "quit" — stop the systemd service so it stays
+    # down until the next reboot or a manual `systemctl start`.
+    _stop_own_systemd_service()
+    sys.exit(0)
