@@ -96,6 +96,9 @@ class DisplayLed(Display):
         if self.auto_commit:
             self.commit()
 
+    def poll_events(self) -> str | None:
+        return None
+
     def turn_on(self, indices: list[tuple[int, int]], color: tuple[int, int, int]) -> str:
         """Turn on LEDs at the given (row, col) positions with the given color.
         Use (-1, 1..4) for the four corner minute LEDs.

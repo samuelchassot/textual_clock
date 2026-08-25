@@ -2,6 +2,7 @@ from enum import Enum
 from math import floor
 import os
 import random
+import sys
 import time
 
 from display import Display
@@ -280,8 +281,18 @@ class Clock:
 
     def run_loop(self, refresh_rate_seconds: int = 5, delay_between_words_seconds: float = 0.2):
         print("Start of the clock")
+        last_update = time.time() - refresh_rate_seconds  # trigger an immediate first update
         while True:
-             # check if file test.txt exists
+            command = self.display.poll_events()
+            if command == "quit":
+                break
+            elif command == "restart":
+                os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0])])
+            elif command == "toggle_update_style":
+                current = self.read_current_update_style()
+                new_style = UPDATE_STYLE.MATRIX if current == UPDATE_STYLE.SIMPLE else UPDATE_STYLE.SIMPLE
+                self.update_current_update_style(new_style.value)
+
             reload = False
             if os.path.exists("test.txt"):
                 print("Test mode activated!")
@@ -289,12 +300,17 @@ class Clock:
                 os.remove("test.txt")
                 self.display.turn_off_all()
                 reload = True
-            current_update_style = self.read_current_update_style()
-            if current_update_style == UPDATE_STYLE.MATRIX:
-                self.update_clock_matrix()
-            else:
-                self.update_clock(delay_between_words_seconds, reload)
-            time.sleep(refresh_rate_seconds)
+                last_update = 0
+
+            if reload or time.time() - last_update >= refresh_rate_seconds:
+                current_update_style = self.read_current_update_style()
+                if current_update_style == UPDATE_STYLE.MATRIX:
+                    self.update_clock_matrix()
+                else:
+                    self.update_clock(delay_between_words_seconds, reload)
+                last_update = time.time()
+
+            time.sleep(0.1)
 
     def test_loop(self):
         print("turning off")

@@ -36,3 +36,11 @@ class Display(ABC):
 
     @abstractmethod
     def turn_on(self, indices: list[tuple[int, int]], color: tuple[int, int, int]) -> str: ...
+
+    @abstractmethod
+    def poll_events(self) -> str | None:
+        """Process pending input events. Returns a command string or None.
+        Possible commands: 'quit', 'restart', 'toggle_update_style'.
+        Blocks until resolved when a modal menu is open.
+        """
+        ...

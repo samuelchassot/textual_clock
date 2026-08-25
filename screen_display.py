@@ -2,6 +2,18 @@ import pygame
 
 from display import Display
 
+DOUBLE_CLICK_MS = 400
+
+MENU_ITEMS = [
+    ("Quit",         "quit"),
+    ("Restart",      "restart"),
+    ("Toggle style", "toggle_update_style"),
+]
+
+BUTTON_W   = 440
+BUTTON_H   = 90
+BUTTON_GAP = 24
+
 
 class DisplayScreen(Display):
 
@@ -25,6 +37,9 @@ class DisplayScreen(Display):
             ["V", "I", "N", "G", "T", "-", "C", "I", "N", "Q", "U"],
             ["E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M"],
         ]
+        self._last_click_ms = 0
+        pygame.font.init()
+        self._menu_font = pygame.font.SysFont(None, 56)
 
     # Letters on the clock:
     #
@@ -80,3 +95,66 @@ class DisplayScreen(Display):
         if self.auto_commit:
             self.commit()
         return debug_str
+
+    # ------------------------------------------------------------------
+    # Event handling
+    # ------------------------------------------------------------------
+
+    def poll_events(self) -> str | None:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "quit"
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_q, pygame.K_ESCAPE):
+                return "quit"
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                now = pygame.time.get_ticks()
+                if now - self._last_click_ms < DOUBLE_CLICK_MS:
+                    return self._run_menu()
+                self._last_click_ms = now
+        return None
+
+    def _run_menu(self) -> str | None:
+        """Draw the menu and block until the user picks an action or dismisses."""
+        saved = self.surface.copy()
+
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 190))
+        self.surface.blit(overlay, (0, 0))
+
+        # Draw buttons and collect their rects
+        total_h = len(MENU_ITEMS) * BUTTON_H + (len(MENU_ITEMS) - 1) * BUTTON_GAP
+        start_y = (self.screen_height - total_h) // 2
+        buttons = []
+        for i, (label, action) in enumerate(MENU_ITEMS):
+            x = (self.screen_width - BUTTON_W) // 2
+            y = start_y + i * (BUTTON_H + BUTTON_GAP)
+            rect = pygame.Rect(x, y, BUTTON_W, BUTTON_H)
+            pygame.draw.rect(self.surface, (50, 50, 50), rect, border_radius=14)
+            pygame.draw.rect(self.surface, (200, 200, 200), rect, 2, border_radius=14)
+            text = self._menu_font.render(label, True, (255, 255, 255))
+            self.surface.blit(text, text.get_rect(center=rect.center))
+            buttons.append((rect, action))
+
+        pygame.display.flip()
+
+        # Inner event loop — blocks until dismissed
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return "quit"
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.surface.blit(saved, (0, 0))
+                    pygame.display.flip()
+                    return None
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    for rect, action in buttons:
+                        if rect.collidepoint(event.pos):
+                            self.surface.blit(saved, (0, 0))
+                            pygame.display.flip()
+                            return action
+                    # Click outside — dismiss
+                    self.surface.blit(saved, (0, 0))
+                    pygame.display.flip()
+                    return None
+            pygame.time.wait(50)
