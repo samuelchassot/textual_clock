@@ -124,9 +124,9 @@ class Clock:
 
         self.display = display
 
-
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
+        self._current_style = self.read_current_update_style()
 
         self.last_h_five_min_residual_minutes_color: tuple[int, int, int, tuple[int, int, int]] = (
             0,
@@ -176,12 +176,18 @@ class Clock:
     def update_current_update_style(self, update_style_str: str):
         try:
             update_style = UPDATE_STYLE.from_str(update_style_str)
+        except (ValueError, NotImplementedError):
+            print("Invalid update style received: " + update_style_str)
+            return
+        self._current_style = update_style
+        try:
             with open(self.UPDATE_STYLE_FILE_PATH, "w") as f:
                 f.write(update_style.value)
-        except ValueError:
-            print("Invalid update style received: " + update_style_str)
         except Exception as e:
             print("ERROR: cannot write the update style to file!\n", e)
+
+    def current_update_style_value(self) -> str:
+        return self._current_style.value
 
     def read_current_update_style(self) -> UPDATE_STYLE:
         try:
@@ -291,6 +297,8 @@ class Clock:
             elif command and command.startswith("set_update_style:"):
                 style_value = command.split(":", 1)[1]
                 self.update_current_update_style(style_value)
+                last_update = 0  # force immediate refresh with the new style
+                self.last_h_five_min_residual_minutes_color = (0, 0, 0, (0, 0, 0))
 
             reload = False
             if os.path.exists("test.txt"):

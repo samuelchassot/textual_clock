@@ -195,7 +195,7 @@ if __name__ == "__main__":
     clk = clock.Clock(display)
     if clock_display == "screen":
         display.set_style_options(clk.update_style_options())
-        display.set_get_current_style_fn(lambda: clk.read_current_update_style().value)
+        display.set_get_current_style_fn(lambda: clk.current_update_style_value())
     refresh_rate_seconds = 5
     delay_between_words_seconds = 0.2
     flask_thread = threading.Thread(target=lambda: app.run(host=HOST, port=PORT), daemon=True)
