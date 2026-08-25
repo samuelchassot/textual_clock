@@ -385,11 +385,10 @@ class Clock:
             return cells
 
         def _matrix_rain(target_cells: list[tuple[int, int]]) -> None:
-            """Falling-character animation from word_clock_matrix_tkinter.py, ported to LEDs.
-            Ends with target_cells lit in self.color_on and all other letter cells off."""
+            """Falling-character animation. Ends with target_cells lit in
+            self.color_on and all other cells off."""
             nrows = self.display.rows
             ncols = self.display.cols
-            pixels = self.display.pixels
             target_color = self.color_on
             target_set = set(target_cells)
 
@@ -397,14 +396,9 @@ class Clock:
             drop_speed = [random.uniform(3.0, 5.5) for _ in range(ncols)]
             lock_q = list(target_set)
             random.shuffle(lock_q)
-            locked: dict[tuple[int, int], float] = {}   # cell -> instant où elle s'est figée
+            locked: dict[tuple[int, int], float] = {}
 
-            # auto_write triggers a strip refresh on every pixel assignment — far too
-            # slow at ~110 writes per frame. Batch the frame and call show() once.
-            prev_auto = getattr(pixels, "auto_write", None)
-            if prev_auto is not None:
-                pixels.auto_write = False
-
+            self.display.set_auto_commit(False)
             try:
                 t0 = time.time()
                 dt = self.ANIM_MS / 1000.0
@@ -465,22 +459,18 @@ class Clock:
                                 # Estompe vers l'éteint en fin d'animation
                                 color = lerp_color(rain_color, self.color_off, rain_fade) \
                                         if rain_fade > 0 else rain_color
-                            pixels[self.display.to_physical_index(r, c)] = color
+                            self.display.turn_on([(r, c)], color)
 
-                    if hasattr(pixels, "show"):
-                        pixels.show()
+                    self.display.commit()
                     time.sleep(dt)
 
-                # Dernière frame batchée: éteint tout puis allume la cible, un seul
-                # show() — évite le clignotement noir entre l'extinction et l'allumage.
-                pixels.fill(self.color_off)
+                # Dernière frame: éteint tout puis allume la cible en un seul commit
+                self.display.turn_off_all()
                 for cell in target_set:
-                    pixels[self.display.to_physical_index(*cell)] = target_color
-                if hasattr(pixels, "show"):
-                    pixels.show()
+                    self.display.turn_on([cell], target_color)
+                self.display.commit()
             finally:
-                if prev_auto is not None:
-                    pixels.auto_write = prev_auto
+                self.display.set_auto_commit(True)
         tested = False
         if os.path.exists("test.txt"):
             print("Test mode activated!")
