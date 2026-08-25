@@ -40,7 +40,7 @@ class Display(ABC):
     @abstractmethod
     def poll_events(self) -> str | None:
         """Process pending input events. Returns a command string or None.
-        Possible commands: 'quit', 'restart', 'toggle_update_style'.
+        Possible commands: 'quit', 'restart', 'set_update_style:<value>'.
         Blocks until resolved when a modal menu is open.
         """
         ...

@@ -288,10 +288,9 @@ class Clock:
                 break
             elif command == "restart":
                 os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0])])
-            elif command == "toggle_update_style":
-                current = self.read_current_update_style()
-                new_style = UPDATE_STYLE.MATRIX if current == UPDATE_STYLE.SIMPLE else UPDATE_STYLE.SIMPLE
-                self.update_current_update_style(new_style.value)
+            elif command and command.startswith("set_update_style:"):
+                style_value = command.split(":", 1)[1]
+                self.update_current_update_style(style_value)
 
             reload = False
             if os.path.exists("test.txt"):

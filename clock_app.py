@@ -171,6 +171,8 @@ if __name__ == "__main__":
         display = DisplayLed(n_leds_per_line, pixels)
 
     clk = clock.Clock(display)
+    if clock_display == "screen":
+        display.set_style_options(clk.update_style_options())
     refresh_rate_seconds = 5
     delay_between_words_seconds = 0.2
     flask_thread = threading.Thread(target=lambda: app.run(host=HOST, port=PORT), daemon=True)

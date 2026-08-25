@@ -5,9 +5,9 @@ from display import Display
 DOUBLE_CLICK_MS = 400
 
 MENU_ITEMS = [
-    ("Quit",         "quit"),
-    ("Restart",      "restart"),
-    ("Toggle style", "toggle_update_style"),
+    ("Quit",            "quit"),
+    ("Restart",         "restart"),
+    ("Update style >",  "select_update_style"),
 ]
 
 BUTTON_W   = 440
@@ -38,6 +38,7 @@ class DisplayScreen(Display):
             ["E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M"],
         ]
         self._last_click_ms = 0
+        self._style_options: list[str] = []
         pygame.font.init()
         self._menu_font = pygame.font.SysFont(None, 56)
 
@@ -54,6 +55,13 @@ class DisplayScreen(Display):
     # 7  E T R Q U A R T P R D
     # 8  V I N G T - C I N Q U
     # 9  E T S D E M I E P A M
+
+    def set_style_options(self, options: list[str]) -> None:
+        self._style_options = options
+
+    # ------------------------------------------------------------------
+    # Drawing
+    # ------------------------------------------------------------------
 
     def _draw_cell(self, i: int, j: int, color: tuple[int, int, int]) -> None:
         y0 = round(i * self.screen_height / self.rows)
@@ -113,20 +121,20 @@ class DisplayScreen(Display):
                 self._last_click_ms = now
         return None
 
-    def _run_menu(self) -> str | None:
-        """Draw the menu and block until the user picks an action or dismisses."""
+    def _run_button_menu(self, items: list[tuple[str, str]]) -> str | None:
+        """Overlay a button menu and block until the user picks an action or dismisses.
+        Returns the command string of the chosen item, or None if dismissed.
+        """
         saved = self.surface.copy()
 
-        # Semi-transparent overlay
         overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 190))
         self.surface.blit(overlay, (0, 0))
 
-        # Draw buttons and collect their rects
-        total_h = len(MENU_ITEMS) * BUTTON_H + (len(MENU_ITEMS) - 1) * BUTTON_GAP
+        total_h = len(items) * BUTTON_H + (len(items) - 1) * BUTTON_GAP
         start_y = (self.screen_height - total_h) // 2
         buttons = []
-        for i, (label, action) in enumerate(MENU_ITEMS):
+        for i, (label, action) in enumerate(items):
             x = (self.screen_width - BUTTON_W) // 2
             y = start_y + i * (BUTTON_H + BUTTON_GAP)
             rect = pygame.Rect(x, y, BUTTON_W, BUTTON_H)
@@ -138,7 +146,6 @@ class DisplayScreen(Display):
 
         pygame.display.flip()
 
-        # Inner event loop — blocks until dismissed
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -153,8 +160,14 @@ class DisplayScreen(Display):
                             self.surface.blit(saved, (0, 0))
                             pygame.display.flip()
                             return action
-                    # Click outside — dismiss
                     self.surface.blit(saved, (0, 0))
                     pygame.display.flip()
                     return None
             pygame.time.wait(50)
+
+    def _run_menu(self) -> str | None:
+        result = self._run_button_menu(MENU_ITEMS)
+        if result == "select_update_style":
+            style_items = [(s.capitalize(), f"set_update_style:{s}") for s in self._style_options]
+            return self._run_button_menu(style_items)
+        return result
