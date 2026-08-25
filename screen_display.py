@@ -39,6 +39,7 @@ class DisplayScreen(Display):
         ]
         self._last_click_ms = 0
         self._style_options: list[str] = []
+        self._get_current_style_fn = None
         pygame.font.init()
         self._menu_font = pygame.font.SysFont(None, 56)
 
@@ -58,6 +59,10 @@ class DisplayScreen(Display):
 
     def set_style_options(self, options: list[str]) -> None:
         self._style_options = options
+
+    def set_get_current_style_fn(self, fn) -> None:
+        """Pass a zero-argument callable that returns the current style value string."""
+        self._get_current_style_fn = fn
 
     # ------------------------------------------------------------------
     # Drawing
@@ -166,8 +171,19 @@ class DisplayScreen(Display):
             pygame.time.wait(50)
 
     def _run_menu(self) -> str | None:
-        result = self._run_button_menu(MENU_ITEMS)
+        current = self._get_current_style_fn() if self._get_current_style_fn else None
+
+        style_label = f"Style: {current} >" if current else "Update style >"
+        items = [
+            (style_label if action == "select_update_style" else label, action)
+            for label, action in MENU_ITEMS
+        ]
+
+        result = self._run_button_menu(items)
         if result == "select_update_style":
-            style_items = [(s.capitalize(), f"set_update_style:{s}") for s in self._style_options]
+            style_items = [
+                (f"> {s.capitalize()}" if s == current else f"  {s.capitalize()}", f"set_update_style:{s}")
+                for s in self._style_options
+            ]
             return self._run_button_menu(style_items)
         return result
