@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Callable
 
 
 class Display(ABC):
@@ -9,6 +10,11 @@ class Display(ABC):
     only stage changes — commit() must be called explicitly to push them to
     the hardware or screen. Use set_auto_commit(False) before a multi-step
     animation and set_auto_commit(True) when done.
+
+    Menu infrastructure: a Display only provides the mechanics of a menu
+    (rendering buttons/dropdowns, running a modal loop, detecting a
+    double-click). It has no notion of what any menu entry means — callers
+    register entries and callbacks, then decide when to open the menu.
     """
 
     rows: int
@@ -39,8 +45,41 @@ class Display(ABC):
 
     @abstractmethod
     def poll_events(self) -> str | None:
-        """Process pending input events. Returns a command string or None.
-        Possible commands: 'quit', 'restart', 'set_update_style:<value>'.
-        Blocks until resolved when a modal menu is open.
+        """Process pending input events. Returns 'quit' if the display was
+        asked to close (window closed, quit key pressed, ...), otherwise
+        None.
         """
+        ...
+
+    @abstractmethod
+    def add_menu_button(self, label: str, on_select: Callable[[], None]) -> None:
+        """Register a simple menu entry. on_select is called with no
+        arguments when the user picks it."""
+        ...
+
+    @abstractmethod
+    def add_menu_dropdown(
+        self,
+        label: str,
+        options: Callable[[], list[str]],
+        current_value: Callable[[], str],
+        on_select: Callable[[str], None],
+    ) -> None:
+        """Register a menu entry that drills into a submenu of choices.
+        options() and current_value() are called each time the menu is
+        opened; on_select(value) is called with the chosen option.
+        """
+        ...
+
+    @abstractmethod
+    def open_menu(self) -> None:
+        """Show the menu built from the registered entries and block until
+        it is dismissed or an entry is chosen, invoking the relevant
+        callback."""
+        ...
+
+    @abstractmethod
+    def set_double_click_callback(self, callback: Callable[[], None]) -> None:
+        """Register the callback invoked when the display detects a
+        double-click."""
         ...

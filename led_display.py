@@ -1,3 +1,5 @@
+from typing import Callable
+
 from display import Display
 
 
@@ -98,6 +100,24 @@ class DisplayLed(Display):
 
     def poll_events(self) -> str | None:
         return None
+
+    def add_menu_button(self, label: str, on_select: Callable[[], None]) -> None:
+        pass
+
+    def add_menu_dropdown(
+        self,
+        label: str,
+        options: Callable[[], list[str]],
+        current_value: Callable[[], str],
+        on_select: Callable[[str], None],
+    ) -> None:
+        pass
+
+    def open_menu(self) -> None:
+        pass
+
+    def set_double_click_callback(self, callback: Callable[[], None]) -> None:
+        pass
 
     def turn_on(self, indices: list[tuple[int, int]], color: tuple[int, int, int]) -> str:
         """Turn on LEDs at the given (row, col) positions with the given color.

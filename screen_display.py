@@ -1,18 +1,34 @@
+from typing import Callable
+
 import pygame
 
 from display import Display
 
 DOUBLE_CLICK_MS = 400
 
-MENU_ITEMS = [
-    ("Quit",            "quit"),
-    ("Restart",         "restart"),
-    ("Update style >",  "select_update_style"),
-]
-
 BUTTON_W   = 440
 BUTTON_H   = 90
 BUTTON_GAP = 24
+
+
+class _MenuButton:
+    def __init__(self, label: str, on_select: Callable[[], None]) -> None:
+        self.label = label
+        self.on_select = on_select
+
+
+class _MenuDropdown:
+    def __init__(
+        self,
+        label: str,
+        options: Callable[[], list[str]],
+        current_value: Callable[[], str],
+        on_select: Callable[[str], None],
+    ) -> None:
+        self.label = label
+        self.options = options
+        self.current_value = current_value
+        self.on_select = on_select
 
 
 class DisplayScreen(Display):
@@ -38,8 +54,9 @@ class DisplayScreen(Display):
             ["E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M"],
         ]
         self._last_click_ms = 0
-        self._style_options: list[str] = []
-        self._get_current_style_fn = None
+        self._quit_requested = False
+        self._menu_items: list[_MenuButton | _MenuDropdown] = []
+        self._double_click_callback: Callable[[], None] | None = None
         pygame.font.init()
         self._menu_font = pygame.font.SysFont(None, 56)
 
@@ -56,13 +73,6 @@ class DisplayScreen(Display):
     # 7  E T R Q U A R T P R D
     # 8  V I N G T - C I N Q U
     # 9  E T S D E M I E P A M
-
-    def set_style_options(self, options: list[str]) -> None:
-        self._style_options = options
-
-    def set_get_current_style_fn(self, fn) -> None:
-        """Pass a zero-argument callable that returns the current style value string."""
-        self._get_current_style_fn = fn
 
     # ------------------------------------------------------------------
     # Drawing
@@ -114,6 +124,8 @@ class DisplayScreen(Display):
     # ------------------------------------------------------------------
 
     def poll_events(self) -> str | None:
+        if self._quit_requested:
+            return "quit"
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
@@ -122,13 +134,60 @@ class DisplayScreen(Display):
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 now = pygame.time.get_ticks()
                 if now - self._last_click_ms < DOUBLE_CLICK_MS:
-                    return self._run_menu()
-                self._last_click_ms = now
+                    if self._double_click_callback:
+                        self._double_click_callback()
+                else:
+                    self._last_click_ms = now
         return None
 
-    def _run_button_menu(self, items: list[tuple[str, str]]) -> str | None:
-        """Overlay a button menu and block until the user picks an action or dismisses.
-        Returns the command string of the chosen item, or None if dismissed.
+    # ------------------------------------------------------------------
+    # Menu infrastructure
+    # ------------------------------------------------------------------
+
+    def add_menu_button(self, label: str, on_select: Callable[[], None]) -> None:
+        self._menu_items.append(_MenuButton(label, on_select))
+
+    def add_menu_dropdown(
+        self,
+        label: str,
+        options: Callable[[], list[str]],
+        current_value: Callable[[], str],
+        on_select: Callable[[str], None],
+    ) -> None:
+        self._menu_items.append(_MenuDropdown(label, options, current_value, on_select))
+
+    def set_double_click_callback(self, callback: Callable[[], None]) -> None:
+        self._double_click_callback = callback
+
+    def open_menu(self) -> None:
+        entries = []
+        for item in self._menu_items:
+            if isinstance(item, _MenuDropdown):
+                current = item.current_value()
+                label = f"{item.label}: {current} >" if current else f"{item.label} >"
+            else:
+                label = item.label
+            entries.append((label, item))
+
+        chosen = self._run_button_menu(entries)
+        if chosen is None:
+            return
+
+        if isinstance(chosen, _MenuButton):
+            chosen.on_select()
+        elif isinstance(chosen, _MenuDropdown):
+            current = chosen.current_value()
+            sub_entries = [
+                (f"> {opt.capitalize()}" if opt == current else f"  {opt.capitalize()}", opt)
+                for opt in chosen.options()
+            ]
+            selected = self._run_button_menu(sub_entries)
+            if selected is not None:
+                chosen.on_select(selected)
+
+    def _run_button_menu(self, items: list[tuple[str, object]]) -> object | None:
+        """Overlay a button menu and block until the user picks an entry or dismisses.
+        Returns the action object of the chosen item, or None if dismissed.
         """
         saved = self.surface.copy()
 
@@ -154,7 +213,10 @@ class DisplayScreen(Display):
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    return "quit"
+                    self._quit_requested = True
+                    self.surface.blit(saved, (0, 0))
+                    pygame.display.flip()
+                    return None
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     self.surface.blit(saved, (0, 0))
                     pygame.display.flip()
@@ -169,21 +231,3 @@ class DisplayScreen(Display):
                     pygame.display.flip()
                     return None
             pygame.time.wait(50)
-
-    def _run_menu(self) -> str | None:
-        current = self._get_current_style_fn() if self._get_current_style_fn else None
-
-        style_label = f"Style: {current} >" if current else "Update style >"
-        items = [
-            (style_label if action == "select_update_style" else label, action)
-            for label, action in MENU_ITEMS
-        ]
-
-        result = self._run_button_menu(items)
-        if result == "select_update_style":
-            style_items = [
-                (f"> {s.capitalize()}" if s == current else f"  {s.capitalize()}", f"set_update_style:{s}")
-                for s in self._style_options
-            ]
-            return self._run_button_menu(style_items)
-        return result

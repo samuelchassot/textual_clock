@@ -163,6 +163,35 @@ class Clock:
             item for sub in self.debug_characters for item in sub
         ]
 
+        self._should_quit = False
+        self._should_restart = False
+        self._force_reload = False
+        self._setup_menu()
+
+    def _setup_menu(self) -> None:
+        self.display.add_menu_button("Quit", self._on_quit_selected)
+        self.display.add_menu_button("Restart", self._on_restart_selected)
+        self.display.add_menu_dropdown(
+            "Style",
+            options=self.update_style_options,
+            current_value=self.current_update_style_value,
+            on_select=self._on_update_style_selected,
+        )
+        self.display.set_double_click_callback(self._open_menu)
+
+    def _open_menu(self) -> None:
+        self.display.open_menu()
+
+    def _on_quit_selected(self) -> None:
+        self._should_quit = True
+
+    def _on_restart_selected(self) -> None:
+        self._should_restart = True
+
+    def _on_update_style_selected(self, style_value: str) -> None:
+        self.update_current_update_style(style_value)
+        self._force_reload = True
+
     def read_current_color(self) -> tuple[int, int, int]:
         try:
             with open(self.CURRENT_COLOR_FILE_PATH, "r") as f:
@@ -290,17 +319,18 @@ class Clock:
         last_update = time.time() - refresh_rate_seconds  # trigger an immediate first update
         while True:
             command = self.display.poll_events()
-            if command == "quit":
+            if command == "quit" or self._should_quit:
                 break
-            elif command == "restart":
+            if self._should_restart:
                 os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0])])
-            elif command and command.startswith("set_update_style:"):
-                style_value = command.split(":", 1)[1]
-                self.update_current_update_style(style_value)
-                last_update = 0  # force immediate refresh with the new style
-                self.last_h_five_min_residual_minutes_color = (0, 0, 0, (0, 0, 0))
 
             reload = False
+            if self._force_reload:
+                reload = True
+                last_update = 0  # force immediate refresh with the new style
+                self.last_h_five_min_residual_minutes_color = (0, 0, 0, (0, 0, 0))
+                self._force_reload = False
+
             if os.path.exists("test.txt"):
                 print("Test mode activated!")
                 self.test_loop()
