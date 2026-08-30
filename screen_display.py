@@ -9,6 +9,7 @@ DOUBLE_CLICK_MS = 400
 BUTTON_W   = 440
 BUTTON_H   = 90
 BUTTON_GAP = 24
+MARGIN_AROUND_CELLS_IN_PIXELS = 3
 
 
 class _MenuButton:
@@ -81,10 +82,10 @@ class DisplayScreen(Display):
     # ------------------------------------------------------------------
 
     def _draw_cell(self, i: int, j: int, color: tuple[int, int, int]) -> None:
-        y0 = round(i * self.screen_height / self.rows)
-        y1 = round((i + 1) * self.screen_height / self.rows)
-        x0 = round(j * self.screen_width / self.cols)
-        x1 = round((j + 1) * self.screen_width / self.cols)
+        y0 = round(i * self.screen_height / self.rows + MARGIN_AROUND_CELLS_IN_PIXELS)
+        y1 = round((i + 1) * self.screen_height / self.rows - MARGIN_AROUND_CELLS_IN_PIXELS)
+        x0 = round(j * self.screen_width / self.cols + MARGIN_AROUND_CELLS_IN_PIXELS)
+        x1 = round((j + 1) * self.screen_width / self.cols - MARGIN_AROUND_CELLS_IN_PIXELS)
         pygame.draw.rect(self.surface, color, (x0, y0, x1 - x0, y1 - y0))
 
     def commit(self) -> None:
