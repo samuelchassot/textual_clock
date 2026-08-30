@@ -89,3 +89,14 @@ class Display(ABC):
         """Register the callback invoked when the display detects a
         single tap (fired after DOUBLE_CLICK_MS with no follow-up tap)."""
         ...
+
+    @abstractmethod
+    def add_menu_color_picker(
+        self,
+        label: str,
+        current_value: Callable[[], tuple[int, int, int]],
+        on_select: Callable[[tuple[int, int, int]], None],
+    ) -> None:
+        """Register a color-picker menu entry. Opens an HSV picker submenu;
+        on_select(rgb) is called with the chosen (r, g, b) tuple."""
+        ...

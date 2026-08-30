@@ -170,14 +170,19 @@ class Clock:
         self._setup_menu()
 
     def _setup_menu(self) -> None:
-        self.display.add_menu_button("Quit", self._on_quit_selected)
-        self.display.add_menu_button("Restart", self._on_restart_selected)
         self.display.add_menu_dropdown(
             "Style",
             options=self.update_style_options,
             current_value=self.current_update_style_value,
             on_select=self._on_update_style_selected,
         )
+        self.display.add_menu_color_picker(
+            "Color",
+            current_value=self.read_current_color,
+            on_select=self._on_color_selected,
+        )
+        self.display.add_menu_button("Quit", self._on_quit_selected)
+        self.display.add_menu_button("Restart", self._on_restart_selected)
         self.display.set_single_click_callback(self._on_display_toggle)
         self.display.set_double_click_callback(self._open_menu)
 
@@ -199,6 +204,14 @@ class Clock:
 
     def _on_update_style_selected(self, style_value: str) -> None:
         self.update_current_update_style(style_value)
+        self._force_reload = True
+
+    def _on_color_selected(self, color: tuple[int, int, int]) -> None:
+        try:
+            with open(self.CURRENT_COLOR_FILE_PATH, "w") as f:
+                f.write(f"{color[0]}{self.SEPARATOR}{color[1]}{self.SEPARATOR}{color[2]}")
+        except Exception as e:
+            print("ERROR: cannot write color to file!\n", e)
         self._force_reload = True
 
     def read_current_color(self) -> tuple[int, int, int]:

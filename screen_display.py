@@ -32,6 +32,177 @@ class _MenuDropdown:
         self.on_select = on_select
 
 
+class _MenuColorPicker:
+    def __init__(
+        self,
+        label: str,
+        current_value: Callable[[], tuple[int, int, int]],
+        on_select: Callable[[tuple[int, int, int]], None],
+    ) -> None:
+        self.label = label
+        self.current_value = current_value
+        self.on_select = on_select
+
+    def run(self, display: "DisplayScreen") -> tuple[int, int, int] | None:
+        import colorsys
+
+        r, g, b = (c / 255.0 for c in self.current_value())
+        h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+        saved = display.surface.copy()
+
+        PAD   = 60
+        SV_X  = PAD
+        SV_Y  = 10
+        SV_W  = display.screen_width - 2 * PAD
+        SV_H  = 360
+        HUE_X = PAD
+        HUE_Y = SV_Y + SV_H + 12
+        HUE_H = 44
+        PRV_X = PAD
+        PRV_Y = HUE_Y + HUE_H + 12
+        PRV_H = 44
+        BTN_Y = PRV_Y + PRV_H + 16
+        BTN_H = 82
+        BTN_W = (SV_W - 16) // 2
+
+        def _sv_surface(hue: float) -> pygame.Surface:
+            surf = pygame.Surface((SV_W, SV_H))
+            hc = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
+            hr, hg, hb = int(hc[0] * 255), int(hc[1] * 255), int(hc[2] * 255)
+            for x in range(SV_W):
+                t = x / max(SV_W - 1, 1)
+                pygame.draw.line(
+                    surf,
+                    (int(255 + (hr - 255) * t), int(255 + (hg - 255) * t), int(255 + (hb - 255) * t)),
+                    (x, 0), (x, SV_H - 1),
+                )
+            overlay = pygame.Surface((SV_W, SV_H), pygame.SRCALPHA)
+            for y in range(SV_H):
+                alpha = int(255 * y / max(SV_H - 1, 1))
+                pygame.draw.line(overlay, (0, 0, 0, alpha), (0, y), (SV_W - 1, y))
+            surf.blit(overlay, (0, 0))
+            return surf
+
+        def _hue_surface() -> pygame.Surface:
+            surf = pygame.Surface((SV_W, HUE_H))
+            for x in range(SV_W):
+                rc, gc, bc = colorsys.hsv_to_rgb(x / max(SV_W - 1, 1), 1.0, 1.0)
+                pygame.draw.line(surf, (int(rc * 255), int(gc * 255), int(bc * 255)), (x, 0), (x, HUE_H - 1))
+            return surf
+
+        def _current_rgb() -> tuple[int, int, int]:
+            rc, gc, bc = colorsys.hsv_to_rgb(h, s, v)
+            return (int(rc * 255), int(gc * 255), int(bc * 255))
+
+        def _redraw(sv_surf: pygame.Surface, hue_surf: pygame.Surface):
+            overlay = pygame.Surface((display.screen_width, display.screen_height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 210))
+            display.surface.blit(saved, (0, 0))
+            display.surface.blit(overlay, (0, 0))
+
+            # SV square
+            display.surface.blit(sv_surf, (SV_X, SV_Y))
+            pygame.draw.rect(display.surface, (80, 80, 80), (SV_X, SV_Y, SV_W, SV_H), 1)
+            cx = max(SV_X, min(SV_X + SV_W - 1, int(SV_X + s * SV_W)))
+            cy = max(SV_Y, min(SV_Y + SV_H - 1, int(SV_Y + (1 - v) * SV_H)))
+            pygame.draw.circle(display.surface, (0, 0, 0), (cx, cy), 11, 2)
+            pygame.draw.circle(display.surface, (255, 255, 255), (cx, cy), 9, 2)
+
+            # Hue strip
+            display.surface.blit(hue_surf, (HUE_X, HUE_Y))
+            pygame.draw.rect(display.surface, (80, 80, 80), (HUE_X, HUE_Y, SV_W, HUE_H), 1)
+            hx = max(HUE_X, min(HUE_X + SV_W - 1, int(HUE_X + h * SV_W)))
+            pygame.draw.rect(display.surface, (0, 0, 0), (hx - 3, HUE_Y - 5, 6, HUE_H + 10))
+            pygame.draw.rect(display.surface, (255, 255, 255), (hx - 2, HUE_Y - 4, 4, HUE_H + 8))
+
+            # Color preview
+            pygame.draw.rect(display.surface, _current_rgb(), (PRV_X, PRV_Y, SV_W, PRV_H))
+            pygame.draw.rect(display.surface, (80, 80, 80), (PRV_X, PRV_Y, SV_W, PRV_H), 1)
+
+            # Buttons: Cancel (left) | Validate (right)
+            cancel_rect   = pygame.Rect(SV_X, BTN_Y, BTN_W, BTN_H)
+            validate_rect = pygame.Rect(SV_X + BTN_W + 16, BTN_Y, BTN_W, BTN_H)
+            accent     = display._accent_color()
+            accent_dim = display._accent_color_dim()
+            for rect, lbl in ((cancel_rect, "Cancel"), (validate_rect, "Validate")):
+                pygame.draw.rect(display.surface, accent_dim, rect, border_radius=14)
+                pygame.draw.rect(display.surface, accent, rect, 2, border_radius=14)
+                text = display._menu_font.render(lbl, True, (255, 255, 255))
+                display.surface.blit(text, text.get_rect(center=rect.center))
+
+            pygame.display.flip()
+            return cancel_rect, validate_rect
+
+        sv_surf  = _sv_surface(h)
+        hue_surf = _hue_surface()
+        last_h   = h
+        cancel_rect, validate_rect = _redraw(sv_surf, hue_surf)
+
+        dragging_sv  = False
+        dragging_hue = False
+
+        while True:
+            needs_redraw = False
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    display._quit_requested = True
+                    display.surface.blit(saved, (0, 0))
+                    pygame.display.flip()
+                    return None
+
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    display.surface.blit(saved, (0, 0))
+                    pygame.display.flip()
+                    return None
+
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    pos = event.pos
+                    if validate_rect.collidepoint(pos):
+                        display.surface.blit(saved, (0, 0))
+                        pygame.display.flip()
+                        return _current_rgb()
+                    if cancel_rect.collidepoint(pos):
+                        display.surface.blit(saved, (0, 0))
+                        pygame.display.flip()
+                        return None
+                    if SV_X <= pos[0] < SV_X + SV_W and SV_Y <= pos[1] < SV_Y + SV_H:
+                        dragging_sv = True
+                        s = max(0.0, min(1.0, (pos[0] - SV_X) / SV_W))
+                        v = max(0.0, min(1.0, 1.0 - (pos[1] - SV_Y) / SV_H))
+                        needs_redraw = True
+                    elif HUE_X <= pos[0] < HUE_X + SV_W and HUE_Y <= pos[1] < HUE_Y + HUE_H:
+                        dragging_hue = True
+                        h = max(0.0, min(1.0, (pos[0] - HUE_X) / SV_W))
+                        needs_redraw = True
+                    else:
+                        display.surface.blit(saved, (0, 0))
+                        pygame.display.flip()
+                        return None
+
+                elif event.type == pygame.MOUSEMOTION and pygame.mouse.get_pressed()[0]:
+                    pos = event.pos
+                    if dragging_sv:
+                        s = max(0.0, min(1.0, (pos[0] - SV_X) / SV_W))
+                        v = max(0.0, min(1.0, 1.0 - (pos[1] - SV_Y) / SV_H))
+                        needs_redraw = True
+                    elif dragging_hue:
+                        h = max(0.0, min(1.0, (pos[0] - HUE_X) / SV_W))
+                        needs_redraw = True
+
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    dragging_sv = False
+                    dragging_hue = False
+
+            if needs_redraw:
+                if h != last_h:
+                    sv_surf = _sv_surface(h)
+                    last_h = h
+                cancel_rect, validate_rect = _redraw(sv_surf, hue_surf)
+
+            pygame.time.wait(16)
+
+
 class DisplayScreen(Display):
 
     def __init__(self, cols: int, rows: int, screen_width: int, screen_height: int, surface: pygame.Surface) -> None:
@@ -56,7 +227,7 @@ class DisplayScreen(Display):
         ]
         self._pending_click_ms = 0
         self._quit_requested = False
-        self._menu_items: list[_MenuButton | _MenuDropdown] = []
+        self._menu_items: list[_MenuButton | _MenuDropdown | _MenuColorPicker] = []
         self._single_click_callback: Callable[[], None] | None = None
         self._double_click_callback: Callable[[], None] | None = None
         self._get_accent_color_fn: Callable[[], tuple[int, int, int]] | None = None
@@ -167,6 +338,14 @@ class DisplayScreen(Display):
     ) -> None:
         self._menu_items.append(_MenuDropdown(label, options, current_value, on_select))
 
+    def add_menu_color_picker(
+        self,
+        label: str,
+        current_value: Callable[[], tuple[int, int, int]],
+        on_select: Callable[[tuple[int, int, int]], None],
+    ) -> None:
+        self._menu_items.append(_MenuColorPicker(label, current_value, on_select))
+
     def set_single_click_callback(self, callback: Callable[[], None]) -> None:
         self._single_click_callback = callback
 
@@ -191,6 +370,8 @@ class DisplayScreen(Display):
             if isinstance(item, _MenuDropdown):
                 current = item.current_value()
                 label = f"{item.label}: {current} >" if current else f"{item.label} >"
+            elif isinstance(item, _MenuColorPicker):
+                label = f"{item.label} >"
             else:
                 label = item.label
             entries.append((label, item))
@@ -210,6 +391,10 @@ class DisplayScreen(Display):
             selected = self._run_button_menu(sub_entries)
             if selected is not None:
                 chosen.on_select(selected)
+        elif isinstance(chosen, _MenuColorPicker):
+            result = chosen.run(self)
+            if result is not None:
+                chosen.on_select(result)
 
     def _run_button_menu(self, items: list[tuple[str, object]]) -> object | None:
         """Overlay a button menu and block until the user picks an entry or dismisses.

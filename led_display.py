@@ -122,6 +122,14 @@ class DisplayLed(Display):
     def set_single_click_callback(self, callback: Callable[[], None]) -> None:
         pass
 
+    def add_menu_color_picker(
+        self,
+        label: str,
+        current_value: Callable[[], tuple[int, int, int]],
+        on_select: Callable[[tuple[int, int, int]], None],
+    ) -> None:
+        pass
+
     def turn_on(self, indices: list[tuple[int, int]], color: tuple[int, int, int]) -> str:
         """Turn on LEDs at the given (row, col) positions with the given color.
         Use (-1, 1..4) for the four corner minute LEDs.
