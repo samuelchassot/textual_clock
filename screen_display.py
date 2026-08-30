@@ -1,8 +1,25 @@
+import socket
+import subprocess
 from typing import Callable
 
 import pygame
 
 from display import Display
+
+
+def _get_network_info() -> str:
+    try:
+        ssid = subprocess.check_output(["iwgetid", "-r"], text=True, timeout=1).strip() or "not connected"
+    except Exception:
+        ssid = "WiFi N/A"
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.connect(("8.8.8.8", 80))
+        ip = sock.getsockname()[0]
+        sock.close()
+    except Exception:
+        ip = "N/A"
+    return f"{ssid}  •  {ip}"
 
 DOUBLE_CLICK_MS = 400
 
@@ -49,6 +66,7 @@ class _MenuColorPicker:
         r, g, b = (c / 255.0 for c in self.current_value())
         h, s, v = colorsys.rgb_to_hsv(r, g, b)
 
+        network_info = _get_network_info()
         saved = display.surface.copy()
 
         PAD   = 60
@@ -130,6 +148,10 @@ class _MenuColorPicker:
                 pygame.draw.rect(display.surface, accent, rect, 2, border_radius=14)
                 text = display._menu_font.render(lbl, True, (255, 255, 255))
                 display.surface.blit(text, text.get_rect(center=rect.center))
+
+            info_text = display._info_font.render(network_info, True, (140, 140, 140))
+            info_rect = info_text.get_rect(centerx=display.screen_width // 2, bottom=display.screen_height - 10)
+            display.surface.blit(info_text, info_rect)
 
             pygame.display.flip()
             return cancel_rect, validate_rect
@@ -233,6 +255,7 @@ class DisplayScreen(Display):
         self._get_accent_color_fn: Callable[[], tuple[int, int, int]] | None = None
         pygame.font.init()
         self._menu_font = pygame.font.SysFont(None, 56)
+        self._info_font = pygame.font.SysFont(None, 28)
 
     # Letters on the clock:
     #
@@ -396,6 +419,12 @@ class DisplayScreen(Display):
             if result is not None:
                 chosen.on_select(result)
 
+    def _draw_network_info(self) -> None:
+        info = _get_network_info()
+        text = self._info_font.render(info, True, (140, 140, 140))
+        rect = text.get_rect(centerx=self.screen_width // 2, bottom=self.screen_height - 10)
+        self.surface.blit(text, rect)
+
     def _run_button_menu(self, items: list[tuple[str, object]]) -> object | None:
         """Overlay a button menu and block until the user picks an entry or dismisses.
         Returns the action object of the chosen item, or None if dismissed.
@@ -419,6 +448,7 @@ class DisplayScreen(Display):
             self.surface.blit(text, text.get_rect(center=rect.center))
             buttons.append((rect, action))
 
+        self._draw_network_info()
         pygame.display.flip()
 
         while True:
