@@ -83,3 +83,9 @@ class Display(ABC):
         """Register the callback invoked when the display detects a
         double-click."""
         ...
+
+    @abstractmethod
+    def set_single_click_callback(self, callback: Callable[[], None]) -> None:
+        """Register the callback invoked when the display detects a
+        single tap (fired after DOUBLE_CLICK_MS with no follow-up tap)."""
+        ...

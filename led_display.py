@@ -119,6 +119,9 @@ class DisplayLed(Display):
     def set_double_click_callback(self, callback: Callable[[], None]) -> None:
         pass
 
+    def set_single_click_callback(self, callback: Callable[[], None]) -> None:
+        pass
+
     def turn_on(self, indices: list[tuple[int, int]], color: tuple[int, int, int]) -> str:
         """Turn on LEDs at the given (row, col) positions with the given color.
         Use (-1, 1..4) for the four corner minute LEDs.

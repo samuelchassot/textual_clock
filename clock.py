@@ -166,6 +166,7 @@ class Clock:
         self._should_quit = False
         self._should_restart = False
         self._force_reload = False
+        self._display_on = True
         self._setup_menu()
 
     def _setup_menu(self) -> None:
@@ -177,10 +178,18 @@ class Clock:
             current_value=self.current_update_style_value,
             on_select=self._on_update_style_selected,
         )
+        self.display.set_single_click_callback(self._on_display_toggle)
         self.display.set_double_click_callback(self._open_menu)
 
     def _open_menu(self) -> None:
         self.display.open_menu()
+
+    def _on_display_toggle(self) -> None:
+        self._display_on = not self._display_on
+        if self._display_on:
+            self._force_reload = True
+        else:
+            self.display.turn_off_all()
 
     def _on_quit_selected(self) -> None:
         self._should_quit = True
@@ -339,7 +348,7 @@ class Clock:
                 reload = True
                 last_update = 0
 
-            if reload or time.time() - last_update >= refresh_rate_seconds:
+            if self._display_on and (reload or time.time() - last_update >= refresh_rate_seconds):
                 current_update_style = self.read_current_update_style()
                 if current_update_style == UPDATE_STYLE.MATRIX:
                     self.update_clock_matrix()

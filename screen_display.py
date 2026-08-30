@@ -53,9 +53,10 @@ class DisplayScreen(Display):
             ["V", "I", "N", "G", "T", "-", "C", "I", "N", "Q", "U"],
             ["E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M"],
         ]
-        self._last_click_ms = 0
+        self._pending_click_ms = 0
         self._quit_requested = False
         self._menu_items: list[_MenuButton | _MenuDropdown] = []
+        self._single_click_callback: Callable[[], None] | None = None
         self._double_click_callback: Callable[[], None] | None = None
         self._get_accent_color_fn: Callable[[], tuple[int, int, int]] | None = None
         pygame.font.init()
@@ -127,6 +128,13 @@ class DisplayScreen(Display):
     def poll_events(self) -> str | None:
         if self._quit_requested:
             return "quit"
+
+        now = pygame.time.get_ticks()
+        if self._pending_click_ms > 0 and now - self._pending_click_ms >= DOUBLE_CLICK_MS:
+            self._pending_click_ms = 0
+            if self._single_click_callback:
+                self._single_click_callback()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
@@ -134,11 +142,12 @@ class DisplayScreen(Display):
                 return "quit"
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 now = pygame.time.get_ticks()
-                if now - self._last_click_ms < DOUBLE_CLICK_MS:
+                if self._pending_click_ms > 0 and now - self._pending_click_ms < DOUBLE_CLICK_MS:
+                    self._pending_click_ms = 0
                     if self._double_click_callback:
                         self._double_click_callback()
                 else:
-                    self._last_click_ms = now
+                    self._pending_click_ms = now
         return None
 
     # ------------------------------------------------------------------
@@ -156,6 +165,9 @@ class DisplayScreen(Display):
         on_select: Callable[[str], None],
     ) -> None:
         self._menu_items.append(_MenuDropdown(label, options, current_value, on_select))
+
+    def set_single_click_callback(self, callback: Callable[[], None]) -> None:
+        self._single_click_callback = callback
 
     def set_double_click_callback(self, callback: Callable[[], None]) -> None:
         self._double_click_callback = callback
