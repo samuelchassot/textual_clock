@@ -57,6 +57,7 @@ class DisplayScreen(Display):
         self._quit_requested = False
         self._menu_items: list[_MenuButton | _MenuDropdown] = []
         self._double_click_callback: Callable[[], None] | None = None
+        self._get_accent_color_fn: Callable[[], tuple[int, int, int]] | None = None
         pygame.font.init()
         self._menu_font = pygame.font.SysFont(None, 56)
 
@@ -159,6 +160,18 @@ class DisplayScreen(Display):
     def set_double_click_callback(self, callback: Callable[[], None]) -> None:
         self._double_click_callback = callback
 
+    def set_get_accent_color_fn(self, fn: Callable[[], tuple[int, int, int]]) -> None:
+        self._get_accent_color_fn = fn
+
+    def _accent_color(self) -> tuple[int, int, int]:
+        if self._get_accent_color_fn:
+            return self._get_accent_color_fn()
+        return (200, 200, 200)
+
+    def _accent_color_dim(self) -> tuple[int, int, int]:
+        r, g, b = self._accent_color()
+        return (r // 6, g // 6, b // 6)
+
     def open_menu(self) -> None:
         entries = []
         for item in self._menu_items:
@@ -202,8 +215,8 @@ class DisplayScreen(Display):
             x = (self.screen_width - BUTTON_W) // 2
             y = start_y + i * (BUTTON_H + BUTTON_GAP)
             rect = pygame.Rect(x, y, BUTTON_W, BUTTON_H)
-            pygame.draw.rect(self.surface, (50, 50, 50), rect, border_radius=14)
-            pygame.draw.rect(self.surface, (200, 200, 200), rect, 2, border_radius=14)
+            pygame.draw.rect(self.surface, self._accent_color_dim(), rect, border_radius=14)
+            pygame.draw.rect(self.surface, self._accent_color(), rect, 2, border_radius=14)
             text = self._menu_font.render(label, True, (255, 255, 255))
             self.surface.blit(text, text.get_rect(center=rect.center))
             buttons.append((rect, action))
