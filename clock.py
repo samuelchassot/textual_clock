@@ -1,9 +1,11 @@
 from enum import Enum
 from math import floor
+import json
 import os
 import random
 import time
 
+import tetris_engine
 from display import Display
 from led_display import DisplayLed
 
@@ -590,81 +592,34 @@ class Clock:
         if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
             self.show_minutes_after_five_minutes(corner_leds)
 
-    def update_clock_tetris(self):
-        # ------------------------------------------------------------------
-        # Piece shapes (rotation states, as 0/1 grids) and colors. Movement,
-        # gravity speed and colors are inspired by
-        # github.com/samuelchassot/Tetris.
-        # ------------------------------------------------------------------
-        PIECE_SHAPES = {
-            'I': [
-                [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]],
-                [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
-            ],
-            'O': [
-                [[1, 1], [1, 1]],
-            ],
-            'T': [
-                [[0, 1, 0], [1, 1, 1], [0, 0, 0]],
-                [[0, 1, 0], [0, 1, 1], [0, 1, 0]],
-                [[0, 0, 0], [1, 1, 1], [0, 1, 0]],
-                [[0, 1, 0], [1, 1, 0], [0, 1, 0]],
-            ],
-            'L': [
-                [[1, 1, 1], [1, 0, 0], [0, 0, 0]],
-                [[0, 1, 0], [0, 1, 0], [0, 1, 1]],
-                [[0, 0, 1], [1, 1, 1], [0, 0, 0]],
-                [[1, 1, 0], [0, 1, 0], [0, 1, 0]],
-            ],
-            'J': [
-                [[0, 0, 0], [1, 1, 1], [0, 0, 1]],
-                [[0, 1, 1], [0, 1, 0], [0, 1, 0]],
-                [[1, 0, 0], [1, 1, 1], [0, 0, 0]],
-                [[0, 1, 0], [0, 1, 0], [1, 1, 0]],
-            ],
-            'S': [
-                [[0, 0, 0], [0, 1, 1], [1, 1, 0]],
-                [[0, 1, 0], [0, 1, 1], [0, 0, 1]],
-                [[0, 1, 1], [1, 1, 0], [0, 0, 0]],
-                [[1, 0, 0], [1, 1, 0], [0, 1, 0]],
-            ],
-            'Z': [
-                [[0, 0, 0], [1, 1, 0], [0, 1, 1]],
-                [[0, 0, 1], [0, 1, 1], [0, 1, 0]],
-                [[1, 1, 0], [0, 1, 1], [0, 0, 0]],
-                [[0, 1, 0], [1, 1, 0], [1, 0, 0]],
-            ],
-        }
-        PIECE_COLORS = {
-            'I': (0, 240, 240),    # cyan
-            'O': (240, 240, 0),    # yellow
-            'T': (160, 0, 240),    # purple
-            'L': (240, 160, 0),    # orange
-            'J': (0, 90, 240),     # blue
-            'S': (220, 20, 20),    # red
-            'Z': (20, 200, 20),    # green
-        }
+    TETRIS_TRACES_DIR = "res/tetris_traces"
 
-        PIECE_KINDS = list(PIECE_SHAPES.keys())
-        rows = self.display.rows
+    def update_clock_tetris(self):
+        # Piece shapes/colors and the board physics (spawn, move, rotate,
+        # gravity, line clears) live in tetris_engine.py, shared with the
+        # standalone playable game (tetris_game.py) so a trace recorded
+        # while playing replays here exactly as it happened.
+        rows, cols = self.display.rows, self.display.cols
 
         NUM_PIECES = 11
         MAX_MOVES_PER_PIECE = 3
 
         # The pieces that fall and their "user input", in play order. Each
         # entry is (piece_kind, moves): moves is a list of human-readable
-        # (action, height) pairs — action is "left"/"right"/"rotate" and
-        # height is the row (0 at the top of the board) the piece must have
-        # fallen to before that action fires, so different pieces visibly
-        # dodge left/right at different points of their fall instead of all
-        # shuffling at spawn. Randomized fresh every time so the pieces and
-        # their timing differ on each transition; edit `_random_game_script`
-        # to reshape the whole show without touching the engine below.
+        # (action, height) pairs — action is "left"/"right"/"rotate"/"drop"
+        # and height is the row (0 at the top of the board) the piece must
+        # have fallen to before that action fires, so different pieces
+        # visibly dodge left/right at different points of their fall
+        # instead of all shuffling at spawn. If a played-and-recorded trace
+        # is sitting in res/tetris_traces/ (see tetris_game.py), one is
+        # picked at random and replayed instead; otherwise a fresh script
+        # is randomized every time. Edit `_random_game_script` to reshape
+        # the procedural show without touching the engine below.
         def _random_game_script() -> list[tuple[str, list[tuple[str, int]]]]:
             script = []
             previous_kind = None
             for _ in range(NUM_PIECES):
-                choices = [k for k in PIECE_KINDS if k != previous_kind]
+                choices = [k for k in tetris_engine.PIECE_KINDS if k != previous_kind]
                 kind = random.choice(choices)
                 previous_kind = kind
                 moves = [
@@ -675,133 +630,109 @@ class Clock:
                 script.append((kind, moves))
             return script
 
-        GAME_SCRIPT = _random_game_script()
+        def _load_recorded_script() -> list[tuple[str, list[tuple[str, int]]]] | None:
+            try:
+                files = [f for f in os.listdir(self.TETRIS_TRACES_DIR) if f.endswith('.json')]
+            except FileNotFoundError:
+                return None
+            if not files:
+                return None
+            path = os.path.join(self.TETRIS_TRACES_DIR, random.choice(files))
+            try:
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                if data.get('rows') != rows or data.get('cols') != cols:
+                    print(f"WARNING: tetris trace {path} board size doesn't match the display, ignoring")
+                    return None
+                return [(p['kind'], [(m[0], m[1]) for m in p['moves']]) for p in data['pieces']]
+            except Exception as e:
+                print(f"WARNING: cannot load tetris trace {path}: {e}")
+                return None
+
+        GAME_SCRIPT = _load_recorded_script() or _random_game_script()
 
         MOVE_DELAY = 0.11       # pause after each scripted left/right/rotate
         GRAVITY_DELAY = 0.14    # pause between each row of free-fall
+        FAST_DROP_DELAY = 0.02  # pause between each row of a scripted hard drop
         LOCK_PAUSE = 0.18       # pause once a piece has landed
         FLASH_DELAY = 0.08      # blink half-period for a completed line
         FLASH_COUNT = 3         # number of on/off blinks for a completed line
-        MIN_DURATION_SECONDS = 10.0  # hold the finished board if the random
-                                      # layout made the game run short
+        MIN_DURATION_SECONDS = 10.0  # hold the finished board if the script
+                                      # ran short
 
         def _tetris_game(target_cells: list[tuple[int, int]]) -> None:
             game_start = time.time()
-            rows, cols = self.display.rows, self.display.cols
             target_color = self.color_on
-            board: list[list[tuple[int, int, int] | None]] = [[None] * cols for _ in range(rows)]
-
-            def shape_cells(kind: str, rot: int) -> list[tuple[int, int]]:
-                grid = PIECE_SHAPES[kind][rot % len(PIECE_SHAPES[kind])]
-                return [(i, j) for i, row in enumerate(grid) for j, v in enumerate(row) if v]
-
-            def absolute_cells(piece: dict) -> list[tuple[int, int]]:
-                return [(piece['top'] + i, piece['left'] + j) for i, j in shape_cells(piece['kind'], piece['rot'])]
-
-            def collides(cells: list[tuple[int, int]]) -> bool:
-                for r, c in cells:
-                    if c < 0 or c >= cols or r >= rows:
-                        return True
-                    if r >= 0 and board[r][c] is not None:
-                        return True
-                return False
+            board = tetris_engine.new_board(rows, cols)
 
             def render(piece: dict | None = None) -> None:
                 for r in range(rows):
                     for c in range(cols):
-                        self.display.turn_on([(r, c)], board[r][c] or self.color_off)
+                        kind = board[r][c]
+                        color = tetris_engine.PIECE_COLORS[kind] if kind else self.color_off
+                        self.display.turn_on([(r, c)], color)
                 if piece is not None:
-                    color = PIECE_COLORS[piece['kind']]
-                    for r, c in absolute_cells(piece):
+                    color = tetris_engine.PIECE_COLORS[piece['kind']]
+                    for r, c in tetris_engine.absolute_cells(piece):
                         if 0 <= r < rows and 0 <= c < cols:
                             self.display.turn_on([(r, c)], color)
                 self.display.commit()
 
-            def spawn(kind: str) -> dict:
-                width = len(PIECE_SHAPES[kind][0][0])
-                height = len(PIECE_SHAPES[kind][0])
-                return {'kind': kind, 'rot': 0, 'top': -height, 'left': (cols - width) // 2}
-
-            def try_move(piece: dict, dcol: int) -> None:
-                moved = dict(piece, left=piece['left'] + dcol)
-                if not collides(absolute_cells(moved)):
-                    piece['left'] = moved['left']
-
-            def try_rotate(piece: dict) -> None:
-                new_rot = piece['rot'] + 1
-                for kick in (0, -1, 1, -2, 2):
-                    rotated = dict(piece, rot=new_rot, left=piece['left'] + kick)
-                    if not collides(absolute_cells(rotated)):
-                        piece['rot'] = new_rot
-                        piece['left'] = rotated['left']
-                        return
-
-            def step_down(piece: dict) -> bool:
-                moved = dict(piece, top=piece['top'] + 1)
-                if collides(absolute_cells(moved)):
-                    return False
-                piece['top'] = moved['top']
-                return True
-
-            def lock(piece: dict) -> None:
-                color = PIECE_COLORS[piece['kind']]
-                for r, c in absolute_cells(piece):
-                    if 0 <= r < rows and 0 <= c < cols:
-                        board[r][c] = color
-
             def clear_full_lines() -> None:
-                full_rows = [r for r in range(rows) if all(board[r][c] is not None for c in range(cols))]
-                if not full_rows:
+                full = tetris_engine.full_rows(board)
+                if not full:
                     return
                 for _ in range(FLASH_COUNT):
-                    for r in full_rows:
+                    for r in full:
                         for c in range(cols):
                             self.display.turn_on([(r, c)], (255, 255, 255))
                     self.display.commit()
                     time.sleep(FLASH_DELAY)
-                    for r in full_rows:
+                    for r in full:
                         for c in range(cols):
                             self.display.turn_on([(r, c)], self.color_off)
                     self.display.commit()
                     time.sleep(FLASH_DELAY)
-                blank_rows: list[list[tuple[int, int, int] | None]] = [[None] * cols for _ in full_rows]
-                remaining = [board[r] for r in range(rows) if r not in full_rows]
-                board[:] = blank_rows + remaining
+                tetris_engine.remove_rows(board, full, rows, cols)
 
             self.display.set_auto_commit(False)
             try:
                 for kind, moves in GAME_SCRIPT:
-                    piece = spawn(kind)
+                    piece = tetris_engine.spawn(kind, cols)
                     pending = list(moves)
 
                     def _apply_due_moves() -> None:
                         while pending and piece['top'] >= pending[0][1]:
                             action, _ = pending.pop(0)
                             if action == 'left':
-                                try_move(piece, -1)
+                                tetris_engine.try_move(board, piece, -1, rows, cols)
                             elif action == 'right':
-                                try_move(piece, 1)
+                                tetris_engine.try_move(board, piece, 1, rows, cols)
                             elif action == 'rotate':
-                                try_rotate(piece)
+                                tetris_engine.try_rotate(board, piece, rows, cols)
+                            elif action == 'drop':
+                                while tetris_engine.step_down(board, piece, rows, cols):
+                                    render(piece)
+                                    time.sleep(FAST_DROP_DELAY)
                             render(piece)
                             time.sleep(MOVE_DELAY)
 
                     render(piece)
                     _apply_due_moves()
-                    while step_down(piece):
+                    while tetris_engine.step_down(board, piece, rows, cols):
                         render(piece)
                         time.sleep(GRAVITY_DELAY)
                         _apply_due_moves()
                     _apply_due_moves()
-                    lock(piece)
+                    tetris_engine.lock(board, piece, rows, cols)
                     render()
                     time.sleep(LOCK_PAUSE)
                     clear_full_lines()
                     render()
 
-                # The random layout can finish early (pieces stacking on
-                # each other rather than spreading out) — hold the finished
-                # board so the whole transition still lasts ~10-15s.
+                # The layout can finish early (pieces stacking on each other
+                # rather than spreading out) — hold the finished board so
+                # the whole transition still lasts ~10-15s.
                 remaining = MIN_DURATION_SECONDS - (time.time() - game_start)
                 if remaining > 0:
                     time.sleep(remaining)
