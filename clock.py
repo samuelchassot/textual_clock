@@ -80,14 +80,17 @@ MINUTE_WORDS = {
 class UPDATE_STYLE(Enum):
     SIMPLE = "simple"
     MATRIX = "matrix"
+    TETRIS = "tetris"
 
     def from_str(label: str):
         if label == "simple":
             return UPDATE_STYLE.SIMPLE
         elif label == "matrix":
             return UPDATE_STYLE.MATRIX
+        elif label == "tetris":
+            return UPDATE_STYLE.TETRIS
         else:
-            raise NotImplementedError(f"Unknown update style: {label}") 
+            raise NotImplementedError(f"Unknown update style: {label}")
 class TimeProvider:
     def get_current_time(self) -> time.struct_time:
         return time.localtime()
@@ -367,6 +370,8 @@ class Clock:
                 current_update_style = self.read_current_update_style()
                 if current_update_style == UPDATE_STYLE.MATRIX:
                     self.update_clock_matrix()
+                elif current_update_style == UPDATE_STYLE.TETRIS:
+                    self.update_clock_tetris()
                 else:
                     self.update_clock(delay_between_words_seconds, reload)
                 last_update = time.time()
@@ -581,6 +586,261 @@ class Clock:
             cells = _matrix_cells(eff_hour, disp_min)
             print(f"Animating {len(cells)} target cells")
             _matrix_rain(cells)
+
+        if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
+            self.show_minutes_after_five_minutes(corner_leds)
+
+    def update_clock_tetris(self):
+        # ------------------------------------------------------------------
+        # Piece shapes (rotation states, as 0/1 grids) and colors. Movement,
+        # gravity speed and colors are inspired by
+        # github.com/samuelchassot/Tetris.
+        # ------------------------------------------------------------------
+        PIECE_SHAPES = {
+            'I': [
+                [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]],
+                [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
+            ],
+            'O': [
+                [[1, 1], [1, 1]],
+            ],
+            'T': [
+                [[0, 1, 0], [1, 1, 1], [0, 0, 0]],
+                [[0, 1, 0], [0, 1, 1], [0, 1, 0]],
+                [[0, 0, 0], [1, 1, 1], [0, 1, 0]],
+                [[0, 1, 0], [1, 1, 0], [0, 1, 0]],
+            ],
+            'L': [
+                [[1, 1, 1], [1, 0, 0], [0, 0, 0]],
+                [[0, 1, 0], [0, 1, 0], [0, 1, 1]],
+                [[0, 0, 1], [1, 1, 1], [0, 0, 0]],
+                [[1, 1, 0], [0, 1, 0], [0, 1, 0]],
+            ],
+            'J': [
+                [[0, 0, 0], [1, 1, 1], [0, 0, 1]],
+                [[0, 1, 1], [0, 1, 0], [0, 1, 0]],
+                [[1, 0, 0], [1, 1, 1], [0, 0, 0]],
+                [[0, 1, 0], [0, 1, 0], [1, 1, 0]],
+            ],
+            'S': [
+                [[0, 0, 0], [0, 1, 1], [1, 1, 0]],
+                [[0, 1, 0], [0, 1, 1], [0, 0, 1]],
+                [[0, 1, 1], [1, 1, 0], [0, 0, 0]],
+                [[1, 0, 0], [1, 1, 0], [0, 1, 0]],
+            ],
+            'Z': [
+                [[0, 0, 0], [1, 1, 0], [0, 1, 1]],
+                [[0, 0, 1], [0, 1, 1], [0, 1, 0]],
+                [[1, 1, 0], [0, 1, 1], [0, 0, 0]],
+                [[0, 1, 0], [1, 1, 0], [1, 0, 0]],
+            ],
+        }
+        PIECE_COLORS = {
+            'I': (0, 240, 240),    # cyan
+            'O': (240, 240, 0),    # yellow
+            'T': (160, 0, 240),    # purple
+            'L': (240, 160, 0),    # orange
+            'J': (0, 90, 240),     # blue
+            'S': (220, 20, 20),    # red
+            'Z': (20, 200, 20),    # green
+        }
+
+        # The pieces that fall and their "user input", in play order. Each
+        # entry is (piece_kind, moves): moves is a list of human-readable
+        # actions ("left", "right", "rotate") applied once, right after the
+        # piece spawns, before gravity takes over and it free-falls to
+        # wherever that column stack currently allows. Edit this list to
+        # reshape the whole show without touching the engine below.
+        GAME_SCRIPT = [
+            ('I', ['rotate', 'left', 'left', 'left']),
+            ('I', ['rotate', 'right']),
+            ('O', ['right', 'right', 'right', 'right']),
+            ('I', ['right', 'right', 'right', 'right', 'right', 'right']),
+            ('I', []),
+            ('L', ['right']),
+            ('J', ['left', 'left']),
+            ('T', []),
+            ('S', ['left']),
+            ('Z', ['right', 'right']),
+        ]
+
+        MOVE_DELAY = 0.09       # pause after each scripted left/right/rotate
+        GRAVITY_DELAY = 0.09    # pause between each row of free-fall
+        LOCK_PAUSE = 0.15       # pause once a piece has landed
+        FLASH_DELAY = 0.08      # blink half-period for a completed line
+        FLASH_COUNT = 3         # number of on/off blinks for a completed line
+
+        def _tetris_game(target_cells: list[tuple[int, int]]) -> None:
+            rows, cols = self.display.rows, self.display.cols
+            target_color = self.color_on
+            board: list[list[tuple[int, int, int] | None]] = [[None] * cols for _ in range(rows)]
+
+            def shape_cells(kind: str, rot: int) -> list[tuple[int, int]]:
+                grid = PIECE_SHAPES[kind][rot % len(PIECE_SHAPES[kind])]
+                return [(i, j) for i, row in enumerate(grid) for j, v in enumerate(row) if v]
+
+            def absolute_cells(piece: dict) -> list[tuple[int, int]]:
+                return [(piece['top'] + i, piece['left'] + j) for i, j in shape_cells(piece['kind'], piece['rot'])]
+
+            def collides(cells: list[tuple[int, int]]) -> bool:
+                for r, c in cells:
+                    if c < 0 or c >= cols or r >= rows:
+                        return True
+                    if r >= 0 and board[r][c] is not None:
+                        return True
+                return False
+
+            def render(piece: dict | None = None) -> None:
+                for r in range(rows):
+                    for c in range(cols):
+                        self.display.turn_on([(r, c)], board[r][c] or self.color_off)
+                if piece is not None:
+                    color = PIECE_COLORS[piece['kind']]
+                    for r, c in absolute_cells(piece):
+                        if 0 <= r < rows and 0 <= c < cols:
+                            self.display.turn_on([(r, c)], color)
+                self.display.commit()
+
+            def spawn(kind: str) -> dict:
+                width = len(PIECE_SHAPES[kind][0][0])
+                height = len(PIECE_SHAPES[kind][0])
+                return {'kind': kind, 'rot': 0, 'top': -height, 'left': (cols - width) // 2}
+
+            def try_move(piece: dict, dcol: int) -> None:
+                moved = dict(piece, left=piece['left'] + dcol)
+                if not collides(absolute_cells(moved)):
+                    piece['left'] = moved['left']
+
+            def try_rotate(piece: dict) -> None:
+                new_rot = piece['rot'] + 1
+                for kick in (0, -1, 1, -2, 2):
+                    rotated = dict(piece, rot=new_rot, left=piece['left'] + kick)
+                    if not collides(absolute_cells(rotated)):
+                        piece['rot'] = new_rot
+                        piece['left'] = rotated['left']
+                        return
+
+            def step_down(piece: dict) -> bool:
+                moved = dict(piece, top=piece['top'] + 1)
+                if collides(absolute_cells(moved)):
+                    return False
+                piece['top'] = moved['top']
+                return True
+
+            def lock(piece: dict) -> None:
+                color = PIECE_COLORS[piece['kind']]
+                for r, c in absolute_cells(piece):
+                    if 0 <= r < rows and 0 <= c < cols:
+                        board[r][c] = color
+
+            def clear_full_lines() -> None:
+                full_rows = [r for r in range(rows) if all(board[r][c] is not None for c in range(cols))]
+                if not full_rows:
+                    return
+                for _ in range(FLASH_COUNT):
+                    for r in full_rows:
+                        for c in range(cols):
+                            self.display.turn_on([(r, c)], (255, 255, 255))
+                    self.display.commit()
+                    time.sleep(FLASH_DELAY)
+                    for r in full_rows:
+                        for c in range(cols):
+                            self.display.turn_on([(r, c)], self.color_off)
+                    self.display.commit()
+                    time.sleep(FLASH_DELAY)
+                blank_rows: list[list[tuple[int, int, int] | None]] = [[None] * cols for _ in full_rows]
+                remaining = [board[r] for r in range(rows) if r not in full_rows]
+                board[:] = blank_rows + remaining
+
+            self.display.set_auto_commit(False)
+            try:
+                for kind, moves in GAME_SCRIPT:
+                    piece = spawn(kind)
+                    render(piece)
+                    for action in moves:
+                        if action == 'left':
+                            try_move(piece, -1)
+                        elif action == 'right':
+                            try_move(piece, 1)
+                        elif action == 'rotate':
+                            try_rotate(piece)
+                        render(piece)
+                        time.sleep(MOVE_DELAY)
+                    while step_down(piece):
+                        render(piece)
+                        time.sleep(GRAVITY_DELAY)
+                    lock(piece)
+                    render()
+                    time.sleep(LOCK_PAUSE)
+                    clear_full_lines()
+                    render()
+
+                # Final frame: turn everything off then show the target cells
+                # in the target color in a single commit, same as the matrix
+                # style does.
+                for r in range(rows):
+                    for c in range(cols):
+                        self.display.turn_on([(r, c)], self.color_off)
+                for r, c in target_cells:
+                    self.display.turn_on([(r, c)], target_color)
+                self.display.commit()
+            finally:
+                self.display.set_auto_commit(True)
+
+        def _target_cells(eff_hour: int, disp_min: int) -> list[tuple[int, int]]:
+            cells = []
+            cells.extend(self._to_turn_on_word('IL'))
+            cells.extend(self._to_turn_on_word('EST'))
+
+            if eff_hour == 0:
+                cells.extend(self._to_turn_on_word('MINUIT'))
+            elif eff_hour == 12:
+                cells.extend(self._to_turn_on_word('MIDI'))
+            else:
+                h = eff_hour % 12
+                h_word = HOUR_MAP[h][0]
+                heure_word = HOUR_MAP[h][1]
+                cells.extend(self._to_turn_on_word(h_word))
+                cells.extend(self._to_turn_on_word(heure_word))
+
+            for w in MINUTE_WORDS.get(disp_min, []):
+                cells.extend(self._to_turn_on_word(w))
+
+            return cells
+
+        tested = False
+        if os.path.exists("test.txt"):
+            print("Test mode activated!")
+            self.test_loop()
+            os.remove("test.txt")
+            self.display.turn_off_all()
+            tested = True
+
+        now = self.time_provider.get_current_time()
+        hour = now.tm_hour
+        minute = now.tm_min
+
+        disp_min = (minute // 5) * 5
+        corner_leds = minute % 5
+        eff_hour = (hour + 1) % 24 if disp_min >= 35 else hour
+        five_minutes = disp_min // 5
+
+        self.color_on = self.read_current_color()
+        for period in self.SPECIAL_TIME_PERIODS:
+            if (eff_hour >= period.start_time[0] and eff_hour <= period.end_time[0]) and (disp_min >= period.start_time[1] and disp_min <= period.end_time[1]):
+                self.color_on = period.color
+                break
+
+        old_tuple = self.last_h_five_min_residual_minutes_color
+        self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
+
+        print(f"now: {eff_hour}h, 5 minutes: {five_minutes}, residual minutes: {corner_leds}, color: {self.color_on}")
+        print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
+
+        if self.anything_changed_except_corners(old_tuple) or tested:
+            cells = _target_cells(eff_hour, disp_min)
+            print(f"Animating {len(cells)} target cells")
+            _tetris_game(cells)
 
         if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
             self.show_minutes_after_five_minutes(corner_leds)
