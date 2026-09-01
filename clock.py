@@ -645,32 +645,48 @@ class Clock:
             'Z': (20, 200, 20),    # green
         }
 
+        PIECE_KINDS = list(PIECE_SHAPES.keys())
+        rows = self.display.rows
+
+        NUM_PIECES = 11
+        MAX_MOVES_PER_PIECE = 3
+
         # The pieces that fall and their "user input", in play order. Each
         # entry is (piece_kind, moves): moves is a list of human-readable
-        # actions ("left", "right", "rotate") applied once, right after the
-        # piece spawns, before gravity takes over and it free-falls to
-        # wherever that column stack currently allows. Edit this list to
-        # reshape the whole show without touching the engine below.
-        GAME_SCRIPT = [
-            ('I', ['rotate', 'left', 'left', 'left']),
-            ('I', ['rotate', 'right']),
-            ('O', ['right', 'right', 'right', 'right']),
-            ('I', ['right', 'right', 'right', 'right', 'right', 'right']),
-            ('I', []),
-            ('L', ['right']),
-            ('J', ['left', 'left']),
-            ('T', []),
-            ('S', ['left']),
-            ('Z', ['right', 'right']),
-        ]
+        # (action, height) pairs — action is "left"/"right"/"rotate" and
+        # height is the row (0 at the top of the board) the piece must have
+        # fallen to before that action fires, so different pieces visibly
+        # dodge left/right at different points of their fall instead of all
+        # shuffling at spawn. Randomized fresh every time so the pieces and
+        # their timing differ on each transition; edit `_random_game_script`
+        # to reshape the whole show without touching the engine below.
+        def _random_game_script() -> list[tuple[str, list[tuple[str, int]]]]:
+            script = []
+            previous_kind = None
+            for _ in range(NUM_PIECES):
+                choices = [k for k in PIECE_KINDS if k != previous_kind]
+                kind = random.choice(choices)
+                previous_kind = kind
+                moves = [
+                    (random.choice(['left', 'right', 'rotate']), random.randint(0, rows - 2))
+                    for _ in range(random.randint(1, MAX_MOVES_PER_PIECE))
+                ]
+                moves.sort(key=lambda m: m[1])
+                script.append((kind, moves))
+            return script
 
-        MOVE_DELAY = 0.09       # pause after each scripted left/right/rotate
-        GRAVITY_DELAY = 0.09    # pause between each row of free-fall
-        LOCK_PAUSE = 0.15       # pause once a piece has landed
+        GAME_SCRIPT = _random_game_script()
+
+        MOVE_DELAY = 0.11       # pause after each scripted left/right/rotate
+        GRAVITY_DELAY = 0.14    # pause between each row of free-fall
+        LOCK_PAUSE = 0.18       # pause once a piece has landed
         FLASH_DELAY = 0.08      # blink half-period for a completed line
         FLASH_COUNT = 3         # number of on/off blinks for a completed line
+        MIN_DURATION_SECONDS = 10.0  # hold the finished board if the random
+                                      # layout made the game run short
 
         def _tetris_game(target_cells: list[tuple[int, int]]) -> None:
+            game_start = time.time()
             rows, cols = self.display.rows, self.display.cols
             target_color = self.color_on
             board: list[list[tuple[int, int, int] | None]] = [[None] * cols for _ in range(rows)]
@@ -756,24 +772,39 @@ class Clock:
             try:
                 for kind, moves in GAME_SCRIPT:
                     piece = spawn(kind)
+                    pending = list(moves)
+
+                    def _apply_due_moves() -> None:
+                        while pending and piece['top'] >= pending[0][1]:
+                            action, _ = pending.pop(0)
+                            if action == 'left':
+                                try_move(piece, -1)
+                            elif action == 'right':
+                                try_move(piece, 1)
+                            elif action == 'rotate':
+                                try_rotate(piece)
+                            render(piece)
+                            time.sleep(MOVE_DELAY)
+
                     render(piece)
-                    for action in moves:
-                        if action == 'left':
-                            try_move(piece, -1)
-                        elif action == 'right':
-                            try_move(piece, 1)
-                        elif action == 'rotate':
-                            try_rotate(piece)
-                        render(piece)
-                        time.sleep(MOVE_DELAY)
+                    _apply_due_moves()
                     while step_down(piece):
                         render(piece)
                         time.sleep(GRAVITY_DELAY)
+                        _apply_due_moves()
+                    _apply_due_moves()
                     lock(piece)
                     render()
                     time.sleep(LOCK_PAUSE)
                     clear_full_lines()
                     render()
+
+                # The random layout can finish early (pieces stacking on
+                # each other rather than spreading out) — hold the finished
+                # board so the whole transition still lasts ~10-15s.
+                remaining = MIN_DURATION_SECONDS - (time.time() - game_start)
+                if remaining > 0:
+                    time.sleep(remaining)
 
                 # Final frame: turn everything off then show the target cells
                 # in the target color in a single commit, same as the matrix
