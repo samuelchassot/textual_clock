@@ -148,10 +148,12 @@ def read_current_color() -> tuple[int, int, int]:
         return DEFAULT_COLOR
 
 
-def _stop_own_systemd_service() -> None:
-    """Stop the systemd service we're running under (if any).
+def _control_own_systemd_service(action: str) -> None:
+    """Stop or restart the systemd service we're running under (if any).
     Reads our own cgroup path to find the .service unit name, then asks
-    systemd to stop it — so it stays stopped until reboot or manual start.
+    systemd to perform the given action ("stop" or "restart"). Stopping
+    leaves it down until reboot or manual start; restarting brings it
+    straight back up (picking up any code pulled via /pull in the meantime).
     """
     try:
         with open("/proc/self/cgroup") as f:
@@ -160,7 +162,7 @@ def _stop_own_systemd_service() -> None:
                 for segment in reversed(path.split("/")):
                     if segment.endswith(".service"):
                         subprocess.run(
-                            ["sudo", "systemctl", "stop", segment],
+                            ["sudo", "systemctl", action, segment],
                             check=False, timeout=5,
                         )
                         return
@@ -199,8 +201,9 @@ if __name__ == "__main__":
     delay_between_words_seconds = 0.2
     flask_thread = threading.Thread(target=lambda: app.run(host=HOST, port=PORT), daemon=True)
     flask_thread.start()
-    clk.run_loop(refresh_rate_seconds, delay_between_words_seconds)
-    # run_loop only returns on "quit" — stop the systemd service so it stays
-    # down until the next reboot or a manual `systemctl start`.
-    _stop_own_systemd_service()
+    reason = clk.run_loop(refresh_rate_seconds, delay_between_words_seconds)
+    # run_loop only returns on "quit" or "restart" — stop the systemd service
+    # so it stays down until the next reboot or a manual `systemctl start`,
+    # or restart it so it comes straight back up.
+    _control_own_systemd_service("restart" if reason == "restart" else "stop")
     sys.exit(0)

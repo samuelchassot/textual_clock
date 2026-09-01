@@ -2,7 +2,6 @@ from enum import Enum
 from math import floor
 import os
 import random
-import sys
 import time
 
 from display import Display
@@ -181,8 +180,8 @@ class Clock:
             current_value=self.read_current_color,
             on_select=self._on_color_selected,
         )
-        self.display.add_menu_button("Quit", self._on_quit_selected)
         self.display.add_menu_button("Restart", self._on_restart_selected)
+        self.display.add_menu_button("Quit", self._on_quit_selected)
         self.display.set_single_click_callback(self._on_display_toggle)
         self.display.set_double_click_callback(self._open_menu)
 
@@ -336,15 +335,18 @@ class Clock:
     def anything_changed_except_corners(self, old_tuple: tuple[int, int, int, tuple[int, int, int]]) -> bool:
         return self.last_h_five_min_residual_minutes_color[0] != old_tuple[0] or self.last_h_five_min_residual_minutes_color[1] != old_tuple[1] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] 
 
-    def run_loop(self, refresh_rate_seconds: int = 5, delay_between_words_seconds: float = 0.2):
+    def run_loop(self, refresh_rate_seconds: int = 5, delay_between_words_seconds: float = 0.2) -> str:
+        """Runs until quit or restart is requested. Returns "quit" or
+        "restart" so the caller knows whether to stop or restart the
+        systemd service."""
         print("Start of the clock")
         last_update = time.time() - refresh_rate_seconds  # trigger an immediate first update
         while True:
             command = self.display.poll_events()
             if command == "quit" or self._should_quit:
-                break
+                return "quit"
             if self._should_restart:
-                os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0])])
+                return "restart"
 
             reload = False
             if self._force_reload:
