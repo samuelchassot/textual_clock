@@ -1,14 +1,14 @@
 from flask import Flask, request, jsonify
 import os
+import subprocess
+import sys
 import clock
-import board
-import neopixel
 import threading
 
 app = Flask(__name__)
 clock_thread = None
 
-HOST = "textualclock.local"
+HOST = "0.0.0.0"
 PORT = 4242
 
 CURRENT_COLOR_FILE_PATH = "res/color.current"
@@ -148,14 +148,62 @@ def read_current_color() -> tuple[int, int, int]:
         return DEFAULT_COLOR
 
 
+def _control_own_systemd_service(action: str) -> None:
+    """Stop or restart the systemd service we're running under (if any).
+    Reads our own cgroup path to find the .service unit name, then asks
+    systemd to perform the given action ("stop" or "restart"). Stopping
+    leaves it down until reboot or manual start; restarting brings it
+    straight back up (picking up any code pulled via /pull in the meantime).
+    """
+    try:
+        with open("/proc/self/cgroup") as f:
+            for line in f:
+                path = line.strip().split(":", 2)[-1]
+                for segment in reversed(path.split("/")):
+                    if segment.endswith(".service"):
+                        subprocess.run(
+                            ["sudo", "systemctl", action, segment],
+                            check=False, timeout=5,
+                        )
+                        return
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
-    n_leds_per_line = 11
-    n_leds = n_leds_per_line * 10 + 4 # 10 lines of 11 LEDs + 4 LEDs for the minutes in the corners
-    pixels = neopixel.NeoPixel(board.D18, n_leds)
-    display = clock.DisplayLed(n_leds_per_line, pixels)
+    clock_display = os.environ.get("CLOCK_DISPLAY", "led")
+
+    print("CLOCK_DISPLAY: " + clock_display)
+
+    if clock_display == "screen":
+        import pygame
+        from screen_display import DisplayScreen
+
+        SCREEN_SIZE = 720
+        pygame.init()
+        surface = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE), pygame.FULLSCREEN | pygame.NOFRAME)
+        pygame.mouse.set_visible(False)
+        display = DisplayScreen(cols=11, rows=10, screen_width=SCREEN_SIZE, screen_height=SCREEN_SIZE, surface=surface)
+    else:
+        import board
+        import neopixel
+        from led_display import DisplayLed
+
+        n_leds_per_line = 11
+        n_leds = n_leds_per_line * 10 + 4
+        pixels = neopixel.NeoPixel(board.D18, n_leds)
+        display = DisplayLed(n_leds_per_line, pixels)
+
     clk = clock.Clock(display)
+    if clock_display == "screen":
+        display.set_get_accent_color_fn(lambda: clk.read_current_color())
     refresh_rate_seconds = 5
     delay_between_words_seconds = 0.2
-    clock_thread = threading.Thread(target=clk.run_loop, args=(refresh_rate_seconds, delay_between_words_seconds))
-    clock_thread.start()
-    app.run(host=HOST, port=PORT)
+    flask_thread = threading.Thread(target=lambda: app.run(host=HOST, port=PORT), daemon=True)
+    flask_thread.start()
+    reason = clk.run_loop(refresh_rate_seconds, delay_between_words_seconds)
+    # run_loop only returns on "quit" or "restart" — stop the systemd service
+    # so it stays down until the next reboot or a manual `systemctl start`,
+    # or restart it so it comes straight back up.
+    _control_own_systemd_service("restart" if reason == "restart" else "stop")
+    sys.exit(0)

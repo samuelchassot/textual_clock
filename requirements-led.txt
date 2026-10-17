@@ -1,0 +1,4 @@
+rpi_ws281x==5.0.0
+adafruit-circuitpython-neopixel==6.3.21
+adafruit-blinka==9.1.0
+rpi-lgpio==0.6

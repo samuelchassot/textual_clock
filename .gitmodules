@@ -1,0 +1,3 @@
+[submodule "Tetris"]
+	path = Tetris
+	url = https://github.com/samuelchassot/Tetris.git

@@ -1,12 +1,17 @@
 from enum import Enum
 from math import floor
+import json
 import os
 import random
 import time
 
+import tetris_engine
+from display import Display
+from led_display import DisplayLed
+
 
 def lerp_color(c1: tuple[int, int, int], c2: tuple[int, int, int], t: float) -> tuple[int, int, int]:
-    """Interpolation linéaire entre deux couleurs RGB, t ∈ [0,1]."""
+    """Linear interpolation between two RGB colors, t ∈ [0,1]."""
     t = max(0.0, min(1.0, t))
     return (
         int(c1[0] + (c2[0] - c1[0]) * t),
@@ -39,6 +44,7 @@ WORD_DEFS = {
     'ET_Q':    [(7, 0,  1)],
     'QUART':   [(7, 3,  7)],
     'VINGT':   [(8, 0,  4)],
+    'TIRET':   [(8, 5,  5)],
     'CINQ_M':  [(8, 6,  9)],
     'ET_D':    [(9, 0,  1)],
     'DEMIE':   [(9, 3,  7)],
@@ -64,9 +70,9 @@ MINUTE_WORDS = {
     10: ['DIX_M'],
     15: ['ET_Q', 'QUART'],
     20: ['VINGT'],
-    25: ['VINGT', 'CINQ_M'],
+    25: ['VINGT', 'TIRET', 'CINQ_M'],
     30: ['ET_D', 'DEMIE'],
-    35: ['MOINS', 'VINGT', 'CINQ_M'],
+    35: ['MOINS', 'VINGT', 'TIRET', 'CINQ_M'],
     40: ['MOINS', 'VINGT'],
     45: ['MOINS', 'QUART'],
     50: ['MOINS', 'DIX_M'],
@@ -76,14 +82,17 @@ MINUTE_WORDS = {
 class UPDATE_STYLE(Enum):
     SIMPLE = "simple"
     MATRIX = "matrix"
+    TETRIS = "tetris"
 
     def from_str(label: str):
         if label == "simple":
             return UPDATE_STYLE.SIMPLE
         elif label == "matrix":
             return UPDATE_STYLE.MATRIX
+        elif label == "tetris":
+            return UPDATE_STYLE.TETRIS
         else:
-            raise NotImplementedError(f"Unknown update style: {label}") 
+            raise NotImplementedError(f"Unknown update style: {label}")
 class TimeProvider:
     def get_current_time(self) -> time.struct_time:
         return time.localtime()
@@ -93,121 +102,6 @@ class TimePeriod:
         self.start_time = start_time
         self.end_time = end_time
         self.color = color
-
-class DisplayLed: 
-
-    def __init__(self, n_leds_per_line: int, led_array) -> None:
-        self.n_leds_per_line = n_leds_per_line
-        self.pixels = led_array
-        self.n_lines = (len(led_array) - 4) // n_leds_per_line
-        assert len(led_array) == 114
-        self.color_off = (0, 0, 0)
-        self.color_on = (255, 255, 255)
-        self.debug_characters = [
-            "I", "L", "N", "E", "S", "T", "O", "D", "E", "U", "X",
-            "Q", "U", "A", "T", "R", "E", "T", "R", "O", "I", "S",
-            "N", "E", "U", "F", "U", "N", "E", "S", "E", "P", "T",
-            "H", "U", "I", "T", "S", "I", "X", "C", "I", "N", "Q",
-            "M", "I", "D", "I", "X", "M", "I", "N", "U", "I", "T",
-            "O", "N", "Z", "E", "R", "H", "E", "U", "R", "E", "S",
-            "M", "O", "I", "N", "S", "O", "L", "E", "D", "I", "X",
-            "E", "T", "R", "Q", "U", "A", "R", "T", "P", "R", "D",
-            "V", "I", "N", "G", "T", "-", "C", "I", "N", "Q", "U",
-            "E", "T", "S", "D", "E", "M", "I", "E", "P", "A", "M",
-        ]
-    # LEDS helper functions
-
-    # Letters on the clock:
-    #
-    #    0 1 2 3 4 5 6 7 8 9 10
-    # 0  I L N E S T O D E U X
-    # 1  Q U A T R E T R O I S
-    # 2  N E U F U N E S E P T
-    # 3  H U I T S I X C I N Q
-    # 4  M I D I X M I N U I T
-    # 5  O N Z E R H E U R E S
-    # 6  M O I N S O L E D I X
-    # 7  E T R Q U A R T P R D
-    # 8  V I N G T - C I N Q U
-    # 9  E T S D E M I E P A M
-    #
-    # BUT the LEDs are soldered in a back and forth motion, which gives these indices:
-
-    #   111                                            112
-    #       0   1   2   3   4   5   6   7   8   9   10
-    #       21  20  19  18  17  16  15  14  13  12  11
-    #       22  23  24  25  26  27  28  29  30  31  32
-    #       43  42  41  40  39  38  37  36  35  34  33
-    #       44  45  46  47  48  49  50  51  52  53  54
-    #       65  64  63  62  61  60  59  58  57  56  55
-    #       66  67  68  69  70  71  72  73  74  75  76
-    #       87  86  85  84  83  82  81  80  79  78  77
-    #       88  89  90  91  92  93  94  95  96  97  98
-    #       109 108 107 106 105 104 103 102 101 100 99
-    #   110                                            113
-
-    # So we offer the function to_physical_index(i, j) that makes the conversion from the virtual index i.e., line and column, to the physical index in the led array.
-    # Use 
-    #         (-1, 1): top left 
-    #         (-1, 2): top right
-    #         (-1, 3): bottom right
-    #         (-1, 4): bottom left
-    #       
-    #       for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
-        
-    def to_physical_index(self, i: int, j: int) -> int:
-        if i == -1:
-            return int(self.n_leds_per_line * self.n_lines + (j % 4))
-            # if j == 1:
-            #     return int(self.n_leds_per_line * self.n_lines + (j % 4))
-            # elif j == 2:
-            #     return int(self.n_leds_per_line * self.n_lines + 2)
-            # elif j == 3:
-            #     return int(self.n_leds_per_line * self.n_lines + 3)
-            # elif j == 4:
-            #     return int(self.n_leds_per_line * self.n_lines)
-        if i % 2 == 0:
-            return int(i * self.n_leds_per_line + j)
-        else:
-            return int(i * self.n_leds_per_line + (self.n_leds_per_line - j - 1))
-
-
-    def turn_off_all(self):
-        self.pixels.fill(self.color_off)
-    
-    def turn_on_all(self, color: tuple[int, int, int]):
-        self.pixels.fill(color)
-    
-    def turn_off(self, indices: list[tuple[int, int]]):
-        for i, j in indices:
-            index = self.to_physical_index(i, j)
-            self.pixels[index] = self.color_off
-
-
-    def turn_on(self, indices: list[tuple[int, int]]):
-        """Turn on the LEDs at the positions given by the tuples in the list. The tuple gives the line then the column.
-           Use 
-             (-1, 1): top left 
-             (-1, 2): top right
-             (-1, 3): bottom right
-             (-1, 4): bottom left
-           
-           for the 4 corner LEDs, which indicate the minutes after the nearest 5 minutes mark.
-        
-        """
-
-        debug_str = ""
-        for i, j in indices:
-            index = self.to_physical_index(i, j)
-            self.pixels[index] = self.color_on
-            if index >= 0 and index < len(self.debug_characters):
-                debug_str += self.debug_characters[index]
-            else:
-                if i == -1:
-                    debug_str += f"corner{j}"
-                else:
-                    debug_str += f"({i},{j})"
-        return debug_str
 
 class Clock:
     ANIM_MS    = 40     # intervalle de frame (~25 fps)
@@ -223,7 +117,7 @@ class Clock:
     RAIN_C4   = (  0,  69,  16)
     RAIN_DARK = (  0,  24,   0)
 
-    def __init__(self, display: DisplayLed, time_provider: TimeProvider = TimeProvider()) -> None:
+    def __init__(self, display: Display, time_provider: TimeProvider = TimeProvider()) -> None:
         self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = "res/color.current"
         self.UPDATE_STYLE_FILE_PATH = "res/update_style.current"
@@ -234,9 +128,9 @@ class Clock:
 
         self.display = display
 
-
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
+        self._current_style = self.read_current_update_style()
 
         self.last_h_five_min_residual_minutes_color: tuple[int, int, int, tuple[int, int, int]] = (
             0,
@@ -273,6 +167,57 @@ class Clock:
             item for sub in self.debug_characters for item in sub
         ]
 
+        self._should_quit = False
+        self._should_restart = False
+        self._force_reload = False
+        self._display_on = True
+        self._setup_menu()
+
+    def _setup_menu(self) -> None:
+        self.display.add_menu_dropdown(
+            "Style",
+            options=self.update_style_options,
+            current_value=self.current_update_style_value,
+            on_select=self._on_update_style_selected,
+        )
+        self.display.add_menu_color_picker(
+            "Color",
+            current_value=self.read_current_color,
+            on_select=self._on_color_selected,
+        )
+        self.display.add_menu_button("Restart", self._on_restart_selected)
+        self.display.add_menu_button("Quit", self._on_quit_selected)
+        self.display.set_single_click_callback(self._on_display_toggle)
+        self.display.set_double_click_callback(self._open_menu)
+
+    def _open_menu(self) -> None:
+        self.display.open_menu()
+
+    def _on_display_toggle(self) -> None:
+        self._display_on = not self._display_on
+        if self._display_on:
+            self._force_reload = True
+        else:
+            self.display.turn_off_all()
+
+    def _on_quit_selected(self) -> None:
+        self._should_quit = True
+
+    def _on_restart_selected(self) -> None:
+        self._should_restart = True
+
+    def _on_update_style_selected(self, style_value: str) -> None:
+        self.update_current_update_style(style_value)
+        self._force_reload = True
+
+    def _on_color_selected(self, color: tuple[int, int, int]) -> None:
+        try:
+            with open(self.CURRENT_COLOR_FILE_PATH, "w") as f:
+                f.write(f"{color[0]}{self.SEPARATOR}{color[1]}{self.SEPARATOR}{color[2]}")
+        except Exception as e:
+            print("ERROR: cannot write color to file!\n", e)
+        self._force_reload = True
+
     def read_current_color(self) -> tuple[int, int, int]:
         try:
             with open(self.CURRENT_COLOR_FILE_PATH, "r") as f:
@@ -286,12 +231,18 @@ class Clock:
     def update_current_update_style(self, update_style_str: str):
         try:
             update_style = UPDATE_STYLE.from_str(update_style_str)
+        except (ValueError, NotImplementedError):
+            print("Invalid update style received: " + update_style_str)
+            return
+        self._current_style = update_style
+        try:
             with open(self.UPDATE_STYLE_FILE_PATH, "w") as f:
                 f.write(update_style.value)
-        except ValueError:
-            print("Invalid update style received: " + update_style_str)
         except Exception as e:
             print("ERROR: cannot write the update style to file!\n", e)
+
+    def current_update_style_value(self) -> str:
+        return self._current_style.value
 
     def read_current_update_style(self) -> UPDATE_STYLE:
         try:
@@ -389,23 +340,45 @@ class Clock:
     def anything_changed_except_corners(self, old_tuple: tuple[int, int, int, tuple[int, int, int]]) -> bool:
         return self.last_h_five_min_residual_minutes_color[0] != old_tuple[0] or self.last_h_five_min_residual_minutes_color[1] != old_tuple[1] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] 
 
-    def run_loop(self, refresh_rate_seconds: int = 5, delay_between_words_seconds: float = 0.2):
+    def run_loop(self, refresh_rate_seconds: int = 5, delay_between_words_seconds: float = 0.2) -> str:
+        """Runs until quit or restart is requested. Returns "quit" or
+        "restart" so the caller knows whether to stop or restart the
+        systemd service."""
         print("Start of the clock")
+        last_update = time.time() - refresh_rate_seconds  # trigger an immediate first update
         while True:
-             # check if file test.txt exists
+            command = self.display.poll_events()
+            if command == "quit" or self._should_quit:
+                return "quit"
+            if self._should_restart:
+                return "restart"
+
             reload = False
+            if self._force_reload:
+                reload = True
+                last_update = 0  # force immediate refresh with the new style
+                self.last_h_five_min_residual_minutes_color = (0, 0, 0, (0, 0, 0))
+                self._force_reload = False
+
             if os.path.exists("test.txt"):
                 print("Test mode activated!")
                 self.test_loop()
                 os.remove("test.txt")
                 self.display.turn_off_all()
                 reload = True
-            current_update_style = self.read_current_update_style()
-            if current_update_style == UPDATE_STYLE.MATRIX:
-                self.update_clock_matrix()
-            else:
-                self.update_clock(delay_between_words_seconds, reload)
-            time.sleep(refresh_rate_seconds)
+                last_update = 0
+
+            if self._display_on and (reload or time.time() - last_update >= refresh_rate_seconds):
+                current_update_style = self.read_current_update_style()
+                if current_update_style == UPDATE_STYLE.MATRIX:
+                    self.update_clock_matrix()
+                elif current_update_style == UPDATE_STYLE.TETRIS:
+                    self.update_clock_tetris()
+                else:
+                    self.update_clock(delay_between_words_seconds, reload)
+                last_update = time.time()
+
+            time.sleep(0.1)
 
     def test_loop(self):
         print("turning off")
@@ -413,18 +386,15 @@ class Clock:
         time.sleep(0.8)
         print("turning on")
         self.color_on = self.read_current_color()
-        self.display.color_on = self.color_on
 
-        for i in range(self.display.n_lines):
-            for j in range(self.display.n_leds_per_line):
-                # physical_index = to_physical_index(i, j, n_leds_per_line)
-                # print(f"Setting LED at line {i}, position {j} (physical index {physical_index})")
-                self.display.turn_on([(i,j)])
+        for i in range(self.display.rows):
+            for j in range(self.display.cols):
+                self.display.turn_on([(i, j)], self.color_on)
                 time.sleep(0.5)
-        
+
         # turn on the 4 corners
         for i in range(1, 5):
-            self.display.turn_on([(-1,i)])
+            self.display.turn_on([(-1, i)], self.color_on)
             time.sleep(0.5)
             
         time.sleep(2)
@@ -452,8 +422,6 @@ class Clock:
             if (h >= period.start_time[0] and h <= period.end_time[0]) and (minutes >= period.start_time[1] and minutes <= period.end_time[1]):
                 self.color_on = period.color
                 break
-        self.display.color_on = self.color_on
-
         assert(residual_minutes >= 0 and residual_minutes < 5)
 
         old_tuple = self.last_h_five_min_residual_minutes_color
@@ -498,18 +466,13 @@ class Clock:
             for w in MINUTE_WORDS.get(disp_min, []):
                 cells.extend(self._to_turn_on_word(w))
 
-            # Tiret du VINGT-CINQ
-            if disp_min in (25, 35):
-                cells.append((8, 5))
-
             return cells
 
         def _matrix_rain(target_cells: list[tuple[int, int]]) -> None:
-            """Falling-character animation from word_clock_matrix_tkinter.py, ported to LEDs.
-            Ends with target_cells lit in self.color_on and all other letter cells off."""
-            nrows = self.display.n_lines
-            ncols = self.display.n_leds_per_line
-            pixels = self.display.pixels
+            """Falling-character animation. Ends with target_cells lit in
+            self.color_on and all other cells off."""
+            nrows = self.display.rows
+            ncols = self.display.cols
             target_color = self.color_on
             target_set = set(target_cells)
 
@@ -517,14 +480,9 @@ class Clock:
             drop_speed = [random.uniform(3.0, 5.5) for _ in range(ncols)]
             lock_q = list(target_set)
             random.shuffle(lock_q)
-            locked: dict[tuple[int, int], float] = {}   # cell -> instant où elle s'est figée
+            locked: dict[tuple[int, int], float] = {}
 
-            # auto_write triggers a strip refresh on every pixel assignment — far too
-            # slow at ~110 writes per frame. Batch the frame and call show() once.
-            prev_auto = getattr(pixels, "auto_write", None)
-            if prev_auto is not None:
-                pixels.auto_write = False
-
+            self.display.set_auto_commit(False)
             try:
                 t0 = time.time()
                 dt = self.ANIM_MS / 1000.0
@@ -585,22 +543,18 @@ class Clock:
                                 # Estompe vers l'éteint en fin d'animation
                                 color = lerp_color(rain_color, self.color_off, rain_fade) \
                                         if rain_fade > 0 else rain_color
-                            pixels[self.display.to_physical_index(r, c)] = color
+                            self.display.turn_on([(r, c)], color)
 
-                    if hasattr(pixels, "show"):
-                        pixels.show()
+                    self.display.commit()
                     time.sleep(dt)
 
-                # Dernière frame batchée: éteint tout puis allume la cible, un seul
-                # show() — évite le clignotement noir entre l'extinction et l'allumage.
-                pixels.fill(self.color_off)
+                # Dernière frame: éteint tout puis allume la cible en un seul commit
+                self.display.turn_off_all()
                 for cell in target_set:
-                    pixels[self.display.to_physical_index(*cell)] = target_color
-                if hasattr(pixels, "show"):
-                    pixels.show()
+                    self.display.turn_on([cell], target_color)
+                self.display.commit()
             finally:
-                if prev_auto is not None:
-                    pixels.auto_write = prev_auto
+                self.display.set_auto_commit(True)
         tested = False
         if os.path.exists("test.txt"):
             print("Test mode activated!")
@@ -623,7 +577,6 @@ class Clock:
             if (eff_hour >= period.start_time[0] and eff_hour <= period.end_time[0]) and (disp_min >= period.start_time[1] and disp_min <= period.end_time[1]):
                 self.color_on = period.color
                 break
-        self.display.color_on = self.color_on
 
         old_tuple = self.last_h_five_min_residual_minutes_color
         self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
@@ -635,6 +588,221 @@ class Clock:
             cells = _matrix_cells(eff_hour, disp_min)
             print(f"Animating {len(cells)} target cells")
             _matrix_rain(cells)
+
+        if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
+            self.show_minutes_after_five_minutes(corner_leds)
+
+    TETRIS_TRACES_DIR = "res/tetris_traces"
+
+    def update_clock_tetris(self):
+        # Piece shapes/colors and the board physics (spawn, move, rotate,
+        # gravity, line clears) live in tetris_engine.py, shared with the
+        # standalone playable game (tetris_game.py) so a trace recorded
+        # while playing replays here exactly as it happened.
+        rows, cols = self.display.rows, self.display.cols
+
+        NUM_PIECES = 10
+        MAX_MOVES_PER_PIECE = 3
+
+        # The pieces that fall and their "user input", in play order. Each
+        # entry is (piece_kind, moves): moves is a list of human-readable
+        # (action, height) pairs — action is "left"/"right"/"rotate"/"drop"
+        # and height is the row (0 at the top of the board) the piece must
+        # have fallen to before that action fires, so different pieces
+        # visibly dodge left/right at different points of their fall
+        # instead of all shuffling at spawn. If a played-and-recorded trace
+        # is sitting in res/tetris_traces/ (see tetris_game.py), one is
+        # picked at random and replayed instead; otherwise a fresh script
+        # is randomized every time. Edit `_random_game_script` to reshape
+        # the procedural show without touching the engine below.
+        def _random_game_script() -> list[tuple[str, list[tuple[str, int]]]]:
+            script = []
+            previous_kind = None
+            for _ in range(NUM_PIECES):
+                choices = [k for k in tetris_engine.PIECE_KINDS if k != previous_kind]
+                kind = random.choice(choices)
+                previous_kind = kind
+                moves = [
+                    (random.choice(['left', 'right', 'rotate']), random.randint(0, rows - 2))
+                    for _ in range(random.randint(1, MAX_MOVES_PER_PIECE))
+                ]
+                moves.sort(key=lambda m: m[1])
+                script.append((kind, moves))
+            return script
+
+        def _load_recorded_script() -> list[tuple[str, list[tuple[str, int]]]] | None:
+            try:
+                files = [f for f in os.listdir(self.TETRIS_TRACES_DIR) if f.endswith('.json')]
+            except FileNotFoundError:
+                return None
+            if not files:
+                return None
+            path = os.path.join(self.TETRIS_TRACES_DIR, random.choice(files))
+            try:
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                if data.get('rows') != rows or data.get('cols') != cols:
+                    print(f"WARNING: tetris trace {path} board size doesn't match the display, ignoring")
+                    return None
+                return [(p['kind'], [(m[0], m[1]) for m in p['moves']]) for p in data['pieces']]
+            except Exception as e:
+                print(f"WARNING: cannot load tetris trace {path}: {e}")
+                return None
+
+        GAME_SCRIPT = (_load_recorded_script() or _random_game_script())[:10]
+
+        MOVE_DELAY = 0.11       # pause after each scripted left/right/rotate
+        GRAVITY_DELAY = 0.14    # pause between each row of free-fall
+        FAST_DROP_DELAY = 0.02  # pause between each row of a scripted hard drop
+        LOCK_PAUSE = 0.18       # pause once a piece has landed
+        FLASH_DELAY = 0.08      # blink half-period for a completed line
+        FLASH_COUNT = 3         # number of on/off blinks for a completed line
+        MIN_DURATION_SECONDS = 10.0  # hold the finished board if the script
+                                      # ran short
+
+        def _tetris_game(target_cells: list[tuple[int, int]]) -> None:
+            game_start = time.time()
+            target_color = self.color_on
+            board = tetris_engine.new_board(rows, cols)
+
+            def render(piece: dict | None = None) -> None:
+                for r in range(rows):
+                    for c in range(cols):
+                        kind = board[r][c]
+                        color = tetris_engine.PIECE_COLORS[kind] if kind else self.color_off
+                        self.display.turn_on([(r, c)], color)
+                if piece is not None:
+                    color = tetris_engine.PIECE_COLORS[piece['kind']]
+                    for r, c in tetris_engine.absolute_cells(piece):
+                        if 0 <= r < rows and 0 <= c < cols:
+                            self.display.turn_on([(r, c)], color)
+                self.display.commit()
+
+            def clear_full_lines() -> None:
+                full = tetris_engine.full_rows(board)
+                if not full:
+                    return
+                for _ in range(FLASH_COUNT):
+                    for r in full:
+                        for c in range(cols):
+                            self.display.turn_on([(r, c)], (255, 255, 255))
+                    self.display.commit()
+                    time.sleep(FLASH_DELAY)
+                    for r in full:
+                        for c in range(cols):
+                            self.display.turn_on([(r, c)], self.color_off)
+                    self.display.commit()
+                    time.sleep(FLASH_DELAY)
+                tetris_engine.remove_rows(board, full, rows, cols)
+
+            self.display.set_auto_commit(False)
+            try:
+                for kind, moves in GAME_SCRIPT:
+                    piece = tetris_engine.spawn(kind, cols)
+                    pending = list(moves)
+
+                    def _apply_due_moves() -> None:
+                        while pending and piece['top'] >= pending[0][1]:
+                            action, _ = pending.pop(0)
+                            if action == 'left':
+                                tetris_engine.try_move(board, piece, -1, rows, cols)
+                            elif action == 'right':
+                                tetris_engine.try_move(board, piece, 1, rows, cols)
+                            elif action == 'rotate':
+                                tetris_engine.try_rotate(board, piece, rows, cols)
+                            elif action == 'drop':
+                                while tetris_engine.step_down(board, piece, rows, cols):
+                                    render(piece)
+                                    time.sleep(FAST_DROP_DELAY)
+                            render(piece)
+                            time.sleep(MOVE_DELAY)
+
+                    render(piece)
+                    _apply_due_moves()
+                    while tetris_engine.step_down(board, piece, rows, cols):
+                        render(piece)
+                        time.sleep(GRAVITY_DELAY)
+                        _apply_due_moves()
+                    _apply_due_moves()
+                    tetris_engine.lock(board, piece, rows, cols)
+                    render()
+                    time.sleep(LOCK_PAUSE)
+                    clear_full_lines()
+                    render()
+
+                # The layout can finish early (pieces stacking on each other
+                # rather than spreading out) — hold the finished board so
+                # the whole transition still lasts ~10-15s.
+                remaining = MIN_DURATION_SECONDS - (time.time() - game_start)
+                if remaining > 0:
+                    time.sleep(remaining)
+
+                # Final frame: turn everything off then show the target cells
+                # in the target color in a single commit, same as the matrix
+                # style does.
+                for r in range(rows):
+                    for c in range(cols):
+                        self.display.turn_on([(r, c)], self.color_off)
+                for r, c in target_cells:
+                    self.display.turn_on([(r, c)], target_color)
+                self.display.commit()
+            finally:
+                self.display.set_auto_commit(True)
+
+        def _target_cells(eff_hour: int, disp_min: int) -> list[tuple[int, int]]:
+            cells = []
+            cells.extend(self._to_turn_on_word('IL'))
+            cells.extend(self._to_turn_on_word('EST'))
+
+            if eff_hour == 0:
+                cells.extend(self._to_turn_on_word('MINUIT'))
+            elif eff_hour == 12:
+                cells.extend(self._to_turn_on_word('MIDI'))
+            else:
+                h = eff_hour % 12
+                h_word = HOUR_MAP[h][0]
+                heure_word = HOUR_MAP[h][1]
+                cells.extend(self._to_turn_on_word(h_word))
+                cells.extend(self._to_turn_on_word(heure_word))
+
+            for w in MINUTE_WORDS.get(disp_min, []):
+                cells.extend(self._to_turn_on_word(w))
+
+            return cells
+
+        tested = False
+        if os.path.exists("test.txt"):
+            print("Test mode activated!")
+            self.test_loop()
+            os.remove("test.txt")
+            self.display.turn_off_all()
+            tested = True
+
+        now = self.time_provider.get_current_time()
+        hour = now.tm_hour
+        minute = now.tm_min
+
+        disp_min = (minute // 5) * 5
+        corner_leds = minute % 5
+        eff_hour = (hour + 1) % 24 if disp_min >= 35 else hour
+        five_minutes = disp_min // 5
+
+        self.color_on = self.read_current_color()
+        for period in self.SPECIAL_TIME_PERIODS:
+            if (eff_hour >= period.start_time[0] and eff_hour <= period.end_time[0]) and (disp_min >= period.start_time[1] and disp_min <= period.end_time[1]):
+                self.color_on = period.color
+                break
+
+        old_tuple = self.last_h_five_min_residual_minutes_color
+        self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
+
+        print(f"now: {eff_hour}h, 5 minutes: {five_minutes}, residual minutes: {corner_leds}, color: {self.color_on}")
+        print(f"previous: {old_tuple[0]}h, 5 minutes: {old_tuple[1]}, residual minutes: {old_tuple[2]}, color: {old_tuple[3]}")
+
+        if self.anything_changed_except_corners(old_tuple) or tested:
+            cells = _target_cells(eff_hour, disp_min)
+            print(f"Animating {len(cells)} target cells")
+            _tetris_game(cells)
 
         if self.last_h_five_min_residual_minutes_color[2] != old_tuple[2] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] or tested:
             self.show_minutes_after_five_minutes(corner_leds)
@@ -656,8 +824,8 @@ class Clock:
             assert h > 0 and h < 24 and h != 12
             for w in HOUR_MAP[h % 12]:
                 to_turn_on.extend(self._to_turn_on_word(w))
-        return self.display.turn_on(to_turn_on)
-       
+        return self.display.turn_on(to_turn_on, self.color_on)
+
 
     def show_five_minutes(self, c: int):
         """
@@ -673,7 +841,7 @@ class Clock:
             to_turn_on = []
             for w in words:
                 to_turn_on.extend(self._to_turn_on_word(w))
-            return self.display.turn_on(to_turn_on)
+            return self.display.turn_on(to_turn_on, self.color_on)
     def show_minutes_after_five_minutes(self, c: int):
         self.display.turn_off([(-1, 1), (-1, 2), (-1, 3), (-1, 4)])
         to_turn_on = []
@@ -685,13 +853,12 @@ class Clock:
             to_turn_on.append((-1, 3))
         if c >= 4:
             to_turn_on.append((-1, 4))
-        return self.display.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on, self.color_on)
 
 
     def show_il_est(self):
         to_turn_on = []
         to_turn_on.extend(self._to_turn_on_word("IL"))
         to_turn_on.extend(self._to_turn_on_word("EST"))
-        return self.display.turn_on(to_turn_on)
+        return self.display.turn_on(to_turn_on, self.color_on)
 
-    

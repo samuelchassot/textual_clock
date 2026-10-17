@@ -1,0 +1,193 @@
+{
+  "rows": 10,
+  "cols": 11,
+  "score": 40,
+  "lines_cleared": 1,
+  "pieces": [
+    {
+      "kind": "T",
+      "moves": [
+        [
+          "left",
+          2
+        ],
+        [
+          "left",
+          2
+        ],
+        [
+          "left",
+          2
+        ],
+        [
+          "left",
+          3
+        ],
+        [
+          "drop",
+          3
+        ]
+      ]
+    },
+    {
+      "kind": "S",
+      "moves": [
+        [
+          "left",
+          2
+        ],
+        [
+          "drop",
+          4
+        ]
+      ]
+    },
+    {
+      "kind": "T",
+      "moves": [
+        [
+          "right",
+          0
+        ],
+        [
+          "right",
+          1
+        ],
+        [
+          "right",
+          1
+        ],
+        [
+          "left",
+          3
+        ],
+        [
+          "left",
+          8
+        ]
+      ]
+    },
+    {
+      "kind": "O",
+      "moves": [
+        [
+          "right",
+          0
+        ],
+        [
+          "right",
+          1
+        ],
+        [
+          "right",
+          1
+        ],
+        [
+          "right",
+          1
+        ],
+        [
+          "right",
+          2
+        ],
+        [
+          "drop",
+          3
+        ]
+      ]
+    },
+    {
+      "kind": "I",
+      "moves": [
+        [
+          "right",
+          -2
+        ],
+        [
+          "right",
+          -1
+        ],
+        [
+          "right",
+          -1
+        ],
+        [
+          "right",
+          -1
+        ],
+        [
+          "drop",
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "Z",
+      "moves": [
+        [
+          "right",
+          -1
+        ],
+        [
+          "left",
+          -1
+        ],
+        [
+          "drop",
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "J",
+      "moves": [
+        [
+          "right",
+          -3
+        ],
+        [
+          "right",
+          -2
+        ],
+        [
+          "drop",
+          -2
+        ]
+      ]
+    },
+    {
+      "kind": "I",
+      "moves": [
+        [
+          "left",
+          -4
+        ],
+        [
+          "right",
+          -3
+        ],
+        [
+          "right",
+          -2
+        ],
+        [
+          "drop",
+          -2
+        ]
+      ]
+    },
+    {
+      "kind": "O",
+      "moves": [
+        [
+          "right",
+          -2
+        ],
+        [
+          "drop",
+          -1
+        ]
+      ]
+    }
+  ]
+}
