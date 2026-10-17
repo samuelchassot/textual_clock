@@ -35,6 +35,7 @@ fi
 if [ $INTERNET_ACTIVE -eq 1 ]; then
   echo "Internet connection established. Running updates..."
   sudo -u "$(stat -c '%U' .)" git pull
+  sudo -u "$(stat -c '%U' .)" git submodule update --init --recursive
   if [ "$CLOCK_DISPLAY" = "led" ]; then
     ./venv/bin/pip install -r requirements.txt
     ./venv/bin/pip install -r requirements-led.txt
