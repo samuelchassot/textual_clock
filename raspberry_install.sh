@@ -20,7 +20,4 @@ rpi_ws281x==5.0.0 \
 adafruit-circuitpython-neopixel==6.3.21 \
 adafruit-blinka==9.1.0
 
-git clone https://github.com/samuelchassot/textual_clock.git
-cd textual_clock
-
 pip install -r requirements.txt
