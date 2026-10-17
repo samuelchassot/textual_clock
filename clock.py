@@ -340,52 +340,6 @@ class Clock:
     def anything_changed_except_corners(self, old_tuple: tuple[int, int, int, tuple[int, int, int]]) -> bool:
         return self.last_h_five_min_residual_minutes_color[0] != old_tuple[0] or self.last_h_five_min_residual_minutes_color[1] != old_tuple[1] or self.last_h_five_min_residual_minutes_color[3] != old_tuple[3] 
 
-    def _next_tetris_trace_path(self) -> str:
-        os.makedirs(self.TETRIS_TRACES_DIR, exist_ok=True)
-        idx = 1
-        while True:
-            path = os.path.join(self.TETRIS_TRACES_DIR, f"trace_{idx:03d}.json")
-            if not os.path.exists(path):
-                return path
-            idx += 1
-
-    def _launch_tetris(self) -> None:
-        import glob
-        import subprocess
-        import sys
-
-        # Remove stale pending traces from any previous aborted session
-        for f in glob.glob(os.path.join(self.TETRIS_TRACES_DIR, ".pending_*.json")):
-            try:
-                os.remove(f)
-            except Exception:
-                pass
-
-        self.display.before_external_app()
-
-        clock_root = os.path.dirname(os.path.abspath(__file__))
-        tetris_dir = os.path.join(clock_root, "Tetris")
-        subprocess.run([sys.executable, "tetris.py"], cwd=tetris_dir)
-
-        self.display.after_external_app()
-
-        pending = sorted(glob.glob(os.path.join(self.TETRIS_TRACES_DIR, ".pending_*.json")))
-        if pending:
-            to_keep = self.display.review_tetris_traces(pending)
-            kept = set(to_keep)
-            for path in pending:
-                if path in kept:
-                    dest = self._next_tetris_trace_path()
-                    os.rename(path, dest)
-                    print(f"Saved tetris trace: {dest}")
-                else:
-                    try:
-                        os.remove(path)
-                    except Exception:
-                        pass
-
-        self._force_reload = True
-
     def run_loop(self, refresh_rate_seconds: int = 5, delay_between_words_seconds: float = 0.2) -> str:
         """Runs until quit or restart is requested. Returns "quit" or
         "restart" so the caller knows whether to stop or restart the
@@ -396,8 +350,6 @@ class Clock:
             command = self.display.poll_events()
             if command == "quit" or self._should_quit:
                 return "quit"
-            if command == "launch_tetris":
-                self._launch_tetris()
             if self._should_restart:
                 return "restart"
 
@@ -649,7 +601,7 @@ class Clock:
         # while playing replays here exactly as it happened.
         rows, cols = self.display.rows, self.display.cols
 
-        NUM_PIECES = 11
+        NUM_PIECES = 10
         MAX_MOVES_PER_PIECE = 3
 
         # The pieces that fall and their "user input", in play order. Each
@@ -697,7 +649,7 @@ class Clock:
                 print(f"WARNING: cannot load tetris trace {path}: {e}")
                 return None
 
-        GAME_SCRIPT = _load_recorded_script() or _random_game_script()
+        GAME_SCRIPT = (_load_recorded_script() or _random_game_script())[:10]
 
         MOVE_DELAY = 0.11       # pause after each scripted left/right/rotate
         GRAVITY_DELAY = 0.14    # pause between each row of free-fall

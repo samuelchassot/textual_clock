@@ -40,7 +40,7 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 RestartSec=1
-User=sam
+User=<username>
 Environment=XDG_RUNTIME_DIR=/run/user/1000
 Environment=WAYLAND_DISPLAY=wayland-0
 ExecStart=sh /home/<username>/textual_clock/start.sh /home/<username>/textual_clock screen
@@ -74,7 +74,7 @@ WantedBy=graphical.target
 
    1. enable the service with `sudo systemctl enable textual_clock_keywatch.service`
    2. note: `evdev` (used by keywatch) is installed automatically by `start.sh` on first run. Start the clock service at least once before starting the keywatch service so the venv and dependencies are in place.
-   
+
 7. setup the scheduled reboot:
    1. execute `sudo crontab -e`
    2. (select your editor if this is the first time. I advise to use nano)
@@ -85,6 +85,9 @@ WantedBy=graphical.target
 
 ## Tetris easter egg (screen display only)
 
-Press `F1` while the clock is running to launch the original Tetris game. The clock pauses and Tetris starts full screen. You can play as many games as you like in one session — each completed or quit game is automatically saved as a pending trace. When you quit Tetris entirely (back to the Tetris home screen, then close the window), the clock resumes and shows a review dialog to keep or discard each recorded game as a clock transition animation (tetris style).
+The keyboard watcher service (`textual_clock_keywatch.service`) listens for two 3-key chords at all times:
 
-Press `Ctrl+F1` at any time — even when the clock is not running — to start the clock service.
+- `Ctrl + T + E` — stops the clock and launches the original Tetris game full screen. Play as many games as you like; each completed or quit game is automatically saved as a clock transition trace in `res/tetris_traces/`.
+- `Ctrl + C + L` — kills Tetris (if running) and starts the clock.
+
+The clock's tetris transition uses the first 10 pieces of each recorded game, then reveals the time.
