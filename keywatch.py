@@ -28,21 +28,38 @@ TETRIS_DIR = os.path.join(CLOCK_ROOT, "Tetris")
 _tetris_proc: "subprocess.Popen | None" = None
 
 
+def _display_user():
+    """Return pwd entry for the primary display user (first UID >= 1000)."""
+    import pwd
+    for uid in range(1000, 1010):
+        try:
+            info = pwd.getpwuid(uid)
+            if os.path.isdir(info.pw_dir):
+                return info
+        except KeyError:
+            pass
+    return None
+
+
 def _gui_env() -> dict:
     """Build an environment suitable for launching a GUI app from a root daemon."""
     env = os.environ.copy()
-    if "DISPLAY" not in env:
-        env["DISPLAY"] = ":0"
-    if "XDG_RUNTIME_DIR" not in env:
-        for uid in range(1000, 1010):
-            d = f"/run/user/{uid}"
-            if os.path.isdir(d):
-                env["XDG_RUNTIME_DIR"] = d
-                for name in os.listdir(d):
-                    if name.startswith("wayland-"):
-                        env.setdefault("WAYLAND_DISPLAY", name)
-                        break
-                break
+    env["DISPLAY"] = ":0"
+
+    user = _display_user()
+    if user:
+        env["HOME"] = user.pw_dir
+        xauth = os.path.join(user.pw_dir, ".Xauthority")
+        if os.path.exists(xauth):
+            env["XAUTHORITY"] = xauth
+        runtime = f"/run/user/{user.pw_uid}"
+        if os.path.isdir(runtime):
+            env["XDG_RUNTIME_DIR"] = runtime
+            for name in os.listdir(runtime):
+                if name.startswith("wayland-"):
+                    env["WAYLAND_DISPLAY"] = name
+                    break
+
     return env
 
 
@@ -54,11 +71,13 @@ def _launch_tetris() -> None:
     print("Ctrl+T+E: stopping clock, launching Tetris")
     subprocess.run(["systemctl", "stop", CLOCK_SERVICE], check=False)
     time.sleep(0.5)
-    _tetris_proc = subprocess.Popen(
-        [sys.executable, "tetris.py"],
-        cwd=TETRIS_DIR,
-        env=_gui_env(),
-    )
+
+    user = _display_user()
+    kwargs: dict = dict(cwd=TETRIS_DIR, env=_gui_env())
+    if user:
+        kwargs["user"] = user.pw_name  # drop root, run as display user
+
+    _tetris_proc = subprocess.Popen([sys.executable, "tetris.py"], **kwargs)
 
 
 def _launch_clock() -> None:
