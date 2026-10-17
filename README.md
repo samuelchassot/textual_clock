@@ -12,6 +12,7 @@ The branches `raspberry_xx` contain only the code for each raspberry. They are i
 4. clone this repo in the home folder
 5. create a systemd service to run the `start.sh` script at startup. Create a file `textual_clock.service` in `/etc/systemd/system/` (replace `<username>` with your username).
    For the **LED clock** (Raspberry Pi with NeoPixel strip):
+
 ```
 [Unit]
 Description=Clock service
@@ -29,6 +30,7 @@ ExecStart=sh /home/<username>/textual_clock/start.sh /home/<username>/textual_cl
 WantedBy=multi-user.target
 ```
    For the **desk/screen clock** (Raspberry Pi with display):
+
 ```
 [Unit]
 Description=Clock service
@@ -46,8 +48,12 @@ ExecStart=sh /home/<username>/textual_clock/start.sh /home/<username>/textual_cl
 [Install]
 WantedBy=graphical.target
 ```
+
    Enable the service with `sudo systemctl enable textual_clock.service`
+
+
 6. create the keyboard watcher service (required for Tetris and for restarting the clock with `Ctrl+F1`). Create a file `textual_clock_keywatch.service` in `/etc/systemd/system/` (replace `<username>` with your username):
+
 ```
 [Unit]
 Description=Clock keyboard watcher
@@ -64,8 +70,11 @@ ExecStart=/home/<username>/textual_clock/venv/bin/python /home/<username>/textua
 [Install]
 WantedBy=graphical.target
 ```
+
+
    1. enable the service with `sudo systemctl enable textual_clock_keywatch.service`
    2. note: `evdev` (used by keywatch) is installed automatically by `start.sh` on first run. Start the clock service at least once before starting the keywatch service so the venv and dependencies are in place.
+   
 7. setup the scheduled reboot:
    1. execute `sudo crontab -e`
    2. (select your editor if this is the first time. I advise to use nano)
