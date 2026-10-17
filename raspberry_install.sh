@@ -4,7 +4,8 @@ sudo apt update
 sudo apt install -y \
 python3-venv python3-pip python3-dev \
 build-essential swig git \
-python3-lgpio python3-rpi-lgpio
+python3-lgpio python3-rpi-lgpio \
+python3-tk
 
 git clone https://github.com/samuelchassot/textual_clock.git
 

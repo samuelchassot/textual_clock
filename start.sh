@@ -41,6 +41,7 @@ if [ $INTERNET_ACTIVE -eq 1 ]; then
   else
     ./venv/bin/pip install -r requirements.txt
   fi
+  ./venv/bin/pip install -r requirements-keywatch.txt
 else
   echo "No internet connection. Skipping updates..."
 fi

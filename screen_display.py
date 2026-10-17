@@ -335,6 +335,8 @@ class DisplayScreen(Display):
                 return "quit"
             if event.type == pygame.KEYDOWN and event.key in (pygame.K_q, pygame.K_ESCAPE):
                 return "quit"
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+                return "launch_tetris"
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 now = pygame.time.get_ticks()
                 if self._pending_click_ms > 0 and now - self._pending_click_ms < DOUBLE_CLICK_MS:
@@ -377,6 +379,109 @@ class DisplayScreen(Display):
 
     def set_get_accent_color_fn(self, fn: Callable[[], tuple[int, int, int]]) -> None:
         self._get_accent_color_fn = fn
+
+    def before_external_app(self) -> None:
+        self.surface.fill(self.color_off)
+        pygame.display.flip()
+
+    def after_external_app(self) -> None:
+        pygame.event.clear()
+        self._pending_click_ms = 0
+        self.surface.fill(self.color_off)
+        pygame.display.flip()
+
+    def review_tetris_traces(self, pending_files: list[str]) -> list[str]:
+        import json as _json
+
+        def _load_stats(path: str) -> tuple[int, float]:
+            try:
+                with open(path) as fh:
+                    data = _json.load(fh)
+                n = len(data.get('pieces', []))
+                return n, max(10.0, n * 1.5)
+            except Exception:
+                return 0, 10.0
+
+        n = len(pending_files)
+        saved = self.surface.copy()
+
+        def _draw_overlay(lines: list[str], buttons: list[str]) -> list[pygame.Rect]:
+            self.surface.blit(saved, (0, 0))
+            overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 190))
+            self.surface.blit(overlay, (0, 0))
+
+            line_h = 60
+            total_h = len(lines) * line_h + 24 + len(buttons) * (BUTTON_H + BUTTON_GAP) - BUTTON_GAP
+            start_y = (self.screen_height - total_h) // 2
+
+            for i, line in enumerate(lines):
+                text = self._menu_font.render(line, True, (255, 255, 255))
+                self.surface.blit(text, text.get_rect(
+                    centerx=self.screen_width // 2,
+                    top=start_y + i * line_h,
+                ))
+
+            rects = []
+            btn_y = start_y + len(lines) * line_h + 24
+            for i, lbl in enumerate(buttons):
+                x = (self.screen_width - BUTTON_W) // 2
+                y = btn_y + i * (BUTTON_H + BUTTON_GAP)
+                rect = pygame.Rect(x, y, BUTTON_W, BUTTON_H)
+                pygame.draw.rect(self.surface, self._accent_color_dim(), rect, border_radius=14)
+                pygame.draw.rect(self.surface, self._accent_color(), rect, 2, border_radius=14)
+                text = self._menu_font.render(lbl, True, (255, 255, 255))
+                self.surface.blit(text, text.get_rect(center=rect.center))
+                rects.append(rect)
+
+            self._draw_network_info()
+            pygame.display.flip()
+            return rects
+
+        def _wait(rects: list[pygame.Rect]) -> int | None:
+            while True:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self._quit_requested = True
+                        return None
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                        return None
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        for i, rect in enumerate(rects):
+                            if rect.collidepoint(event.pos):
+                                return i
+                pygame.time.wait(50)
+
+        # Summary screen
+        rects = _draw_overlay(
+            [f"Tetris: {n} game{'s' if n != 1 else ''} recorded"],
+            ["Keep all", "Review each", "Delete all"],
+        )
+        choice = _wait(rects)
+
+        self.surface.blit(saved, (0, 0))
+        pygame.display.flip()
+
+        if choice is None or choice == 0:
+            return list(pending_files)
+        if choice == 2:
+            return []
+
+        # Per-trace review
+        to_keep = []
+        for i, path in enumerate(pending_files):
+            n_pieces, duration = _load_stats(path)
+            rects = _draw_overlay(
+                [f"Game {i + 1} / {n}", f"{n_pieces} pieces  —  ~{duration:.0f}s"],
+                ["Keep", "Delete"],
+            )
+            btn = _wait(rects)
+            if btn is None or btn == 0:
+                to_keep.append(path)
+
+        self.surface.blit(saved, (0, 0))
+        pygame.display.flip()
+        return to_keep
 
     def _accent_color(self) -> tuple[int, int, int]:
         if self._get_accent_color_fn:

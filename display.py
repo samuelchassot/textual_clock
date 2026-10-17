@@ -90,6 +90,22 @@ class Display(ABC):
         single tap (fired after DOUBLE_CLICK_MS with no follow-up tap)."""
         ...
 
+    def before_external_app(self) -> None:
+        """Called before launching an external full-screen app (e.g. Tetris).
+        Default: no-op. Override to blank/suspend the display."""
+        pass
+
+    def after_external_app(self) -> None:
+        """Called after an external full-screen app has exited.
+        Default: no-op. Override to restore the display."""
+        pass
+
+    def review_tetris_traces(self, pending_files: list[str]) -> list[str]:
+        """Show UI to review pending Tetris trace files after a session.
+        Returns the list of file paths to keep (will be saved as transitions).
+        Default: keep all."""
+        return list(pending_files)
+
     @abstractmethod
     def add_menu_color_picker(
         self,
