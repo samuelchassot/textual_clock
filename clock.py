@@ -119,12 +119,6 @@ class TimeProvider:
     def get_current_time(self) -> time.struct_time:
         return time.localtime()
     
-class TimePeriod:
-    def __init__(self, start_time: tuple[int, int], end_time: tuple[int, int], color: tuple[int, int, int]) -> None:
-        self.start_time = start_time
-        self.end_time = end_time
-        self.color = color
-
 class Clock:
     ANIM_MS    = 40     # intervalle de frame (~25 fps)
     ANIM_TOTAL = 10.0   # durée totale en secondes
@@ -143,9 +137,7 @@ class Clock:
         self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = os.path.join(RES_DIR, "color.current")
         self.UPDATE_STYLE_FILE_PATH = os.path.join(RES_DIR, "update_style.current")
-        self.SPECIAL_TIME_PERIODS_FILE_PATH = os.path.join(RES_DIR, "special_time_periods.txt")
         self.SEPARATOR = ";"
-        self.SPECIAL_TIME_PERIODS = self.load_special_time_periods()
         self.DEFAULT_COLOR = (255, 255, 255)
 
         self.display = display
@@ -282,32 +274,6 @@ class Clock:
         return [style.value for style in UPDATE_STYLE]
 
         
-    def load_special_time_periods(self):
-        special_periods = []
-        try:
-            with open(self.SPECIAL_TIME_PERIODS_FILE_PATH, "r") as f:
-                for line in f:
-                    parts = line.strip().split(self.SEPARATOR)
-                    if len(parts) == 7:
-                        start_hour, start_minute, end_hour, end_minute, r, g, b = map(int, parts)
-                        special_periods.append(TimePeriod((start_hour, start_minute), (end_hour, end_minute), (r, g, b)))
-        except Exception as e:
-            print("ERROR: cannot load special time periods!\n", e)
-        return special_periods
-
-    def store_special_time_periods(self, special_periods: list[TimePeriod]):
-        try:
-            content = ""
-            for period in special_periods:
-                content += f"{period.start_time[0]}{self.SEPARATOR}{period.start_time[1]}{self.SEPARATOR}{period.end_time[0]}{self.SEPARATOR}{period.end_time[1]}{self.SEPARATOR}{period.color[0]}{self.SEPARATOR}{period.color[1]}{self.SEPARATOR}{period.color[2]}\n"
-            write_file_atomic(self.SPECIAL_TIME_PERIODS_FILE_PATH, content)
-        except Exception as e:
-            print("ERROR: cannot store special time periods!\n", e)
-        
-    def update_special_time_periods(self, new_periods: list[TimePeriod]):
-        self.SPECIAL_TIME_PERIODS = new_periods
-        self.store_special_time_periods(new_periods)
-
     def get_current_hour(self) -> int:
         """
         returns the current hour as an int, between 0 and 23, 0 is midnight.
@@ -431,18 +397,11 @@ class Clock:
         h = self.get_current_hour()
         five_minutes = self.get_current_five_minutes()
         residual_minutes = self.get_current_minute_after_five_minutes()
-        minutes = five_minutes*5 + residual_minutes
 
         # Because we show "25 to 10" for 9:35 for example
         if five_minutes > 6:
             h += 1
         self.color_on = self.read_current_color()
-
-        # Check if we are in a special time period
-        for period in self.SPECIAL_TIME_PERIODS:
-            if (h >= period.start_time[0] and h <= period.end_time[0]) and (minutes >= period.start_time[1] and minutes <= period.end_time[1]):
-                self.color_on = period.color
-                break
         assert(residual_minutes >= 0 and residual_minutes < 5)
 
         old_tuple = self.last_h_five_min_residual_minutes_color
@@ -594,10 +553,6 @@ class Clock:
         five_minutes = disp_min // 5
 
         self.color_on = self.read_current_color()
-        for period in self.SPECIAL_TIME_PERIODS:
-            if (eff_hour >= period.start_time[0] and eff_hour <= period.end_time[0]) and (disp_min >= period.start_time[1] and disp_min <= period.end_time[1]):
-                self.color_on = period.color
-                break
 
         old_tuple = self.last_h_five_min_residual_minutes_color
         self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
@@ -809,10 +764,6 @@ class Clock:
         five_minutes = disp_min // 5
 
         self.color_on = self.read_current_color()
-        for period in self.SPECIAL_TIME_PERIODS:
-            if (eff_hour >= period.start_time[0] and eff_hour <= period.end_time[0]) and (disp_min >= period.start_time[1] and disp_min <= period.end_time[1]):
-                self.color_on = period.color
-                break
 
         old_tuple = self.last_h_five_min_residual_minutes_color
         self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)

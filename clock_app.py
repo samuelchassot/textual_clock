@@ -78,25 +78,6 @@ def update_style_options():
     options = clk.update_style_options()
     return jsonify({"update_style_options": options}), 200
 
-@app.route("/special_time_periods", methods=["POST"])
-def special_time_periods_post():
-    print(request.get_data())
-    periods = request.get_json()
-    print("Received JSON special time periods: ", periods)
-    if periods == None:
-        return "ERROR", 400
-
-    special_periods = []
-    for period in periods:
-        start_time = (period["start_hour"], period["start_minute"])
-        end_time = (period["end_hour"], period["end_minute"])
-        color = (period["color_r"], period["color_g"], period["color_b"])
-        special_periods.append(clock.TimePeriod(start_time, end_time, color))
-
-    clk.update_special_time_periods(special_periods)
-    return "Special time periods stored", 200
-
-
 def clock_update_update_style(update_style_str: str) -> bool:
     try:
         clk.update_current_update_style(update_style_str)
