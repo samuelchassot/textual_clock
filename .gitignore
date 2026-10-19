@@ -1,2 +1,6 @@
 .vscode
-.metals
+.metalsres/*.current
+res/*.tmp
+res/special_time_periods.txt
+.mpy-workbench
+*.pyc

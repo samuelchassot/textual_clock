@@ -93,6 +93,28 @@ class UPDATE_STYLE(Enum):
             return UPDATE_STYLE.TETRIS
         else:
             raise NotImplementedError(f"Unknown update style: {label}")
+RES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "res")
+
+
+def write_file_atomic(path: str, content: str) -> None:
+    """Write content to path so that it survives a power cut / reboot: write to a
+    temp file, fsync it, then atomically replace the target."""
+    tmp_path = path + ".tmp"
+    with open(tmp_path, "w") as f:
+        f.write(content)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, path)
+    try:
+        dir_fd = os.open(os.path.dirname(path), os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except OSError:
+        pass
+
+
 class TimeProvider:
     def get_current_time(self) -> time.struct_time:
         return time.localtime()
@@ -119,11 +141,11 @@ class Clock:
 
     def __init__(self, display: Display, time_provider: TimeProvider = TimeProvider()) -> None:
         self.time_provider = time_provider
-        self.CURRENT_COLOR_FILE_PATH = "res/color.current"
-        self.UPDATE_STYLE_FILE_PATH = "res/update_style.current"
-        self.SPECIAL_TIME_PERIODS_FILE_PATH = "res/special_time_periods.txt"
-        self.SPECIAL_TIME_PERIODS = self.load_special_time_periods()
+        self.CURRENT_COLOR_FILE_PATH = os.path.join(RES_DIR, "color.current")
+        self.UPDATE_STYLE_FILE_PATH = os.path.join(RES_DIR, "update_style.current")
+        self.SPECIAL_TIME_PERIODS_FILE_PATH = os.path.join(RES_DIR, "special_time_periods.txt")
         self.SEPARATOR = ";"
+        self.SPECIAL_TIME_PERIODS = self.load_special_time_periods()
         self.DEFAULT_COLOR = (255, 255, 255)
 
         self.display = display
@@ -211,12 +233,17 @@ class Clock:
         self._force_reload = True
 
     def _on_color_selected(self, color: tuple[int, int, int]) -> None:
+        self.store_color(color)
+        self._force_reload = True
+
+    def store_color(self, color: tuple[int, int, int]) -> None:
         try:
-            with open(self.CURRENT_COLOR_FILE_PATH, "w") as f:
-                f.write(f"{color[0]}{self.SEPARATOR}{color[1]}{self.SEPARATOR}{color[2]}")
+            write_file_atomic(
+                self.CURRENT_COLOR_FILE_PATH,
+                f"{color[0]}{self.SEPARATOR}{color[1]}{self.SEPARATOR}{color[2]}",
+            )
         except Exception as e:
             print("ERROR: cannot write color to file!\n", e)
-        self._force_reload = True
 
     def read_current_color(self) -> tuple[int, int, int]:
         try:
@@ -236,8 +263,7 @@ class Clock:
             return
         self._current_style = update_style
         try:
-            with open(self.UPDATE_STYLE_FILE_PATH, "w") as f:
-                f.write(update_style.value)
+            write_file_atomic(self.UPDATE_STYLE_FILE_PATH, update_style.value)
         except Exception as e:
             print("ERROR: cannot write the update style to file!\n", e)
 
@@ -251,11 +277,6 @@ class Clock:
                 return UPDATE_STYLE.from_str(style_str)
         except Exception as e:
             print("WARNING: cannot read the update style! Using default style (SIMPLE).\n", e)
-            try:
-                with open(self.UPDATE_STYLE_FILE_PATH, "w") as f:
-                    f.write(UPDATE_STYLE.SIMPLE.value)
-            except Exception as e:
-                print("ERROR: cannot write the default update style to file!\n", e)
             return UPDATE_STYLE.SIMPLE
     def update_style_options(self) -> list[str]:
         return [style.value for style in UPDATE_STYLE]
@@ -276,10 +297,10 @@ class Clock:
 
     def store_special_time_periods(self, special_periods: list[TimePeriod]):
         try:
-            with open(self.SPECIAL_TIME_PERIODS_FILE_PATH, "w") as f:
-                for period in special_periods:
-                    line = f"{period.start_time[0]}{self.SEPARATOR}{period.start_time[1]}{self.SEPARATOR}{period.end_time[0]}{self.SEPARATOR}{period.end_time[1]}{self.SEPARATOR}{period.color[0]}{self.SEPARATOR}{period.color[1]}{self.SEPARATOR}{period.color[2]}\n"
-                    f.write(line)
+            content = ""
+            for period in special_periods:
+                content += f"{period.start_time[0]}{self.SEPARATOR}{period.start_time[1]}{self.SEPARATOR}{period.end_time[0]}{self.SEPARATOR}{period.end_time[1]}{self.SEPARATOR}{period.color[0]}{self.SEPARATOR}{period.color[1]}{self.SEPARATOR}{period.color[2]}\n"
+            write_file_atomic(self.SPECIAL_TIME_PERIODS_FILE_PATH, content)
         except Exception as e:
             print("ERROR: cannot store special time periods!\n", e)
         
@@ -369,7 +390,7 @@ class Clock:
                 last_update = 0
 
             if self._display_on and (reload or time.time() - last_update >= refresh_rate_seconds):
-                current_update_style = self.read_current_update_style()
+                current_update_style = self._current_style
                 if current_update_style == UPDATE_STYLE.MATRIX:
                     self.update_clock_matrix()
                 elif current_update_style == UPDATE_STYLE.TETRIS:
