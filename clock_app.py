@@ -56,6 +56,40 @@ def color_post():
     clk._force_reload = True
     return "Color stored", 200
 
+@app.route("/night_color", methods=["GET"])
+def night_color_get():
+    (r, g, b) = clk.read_night_color()
+    color = {"color_r": r, "color_g": g, "color_b": b}
+    return jsonify(color), 200
+
+
+@app.route("/night_color", methods=["POST"])
+def night_color_post():
+    print(request.get_data())
+    color = request.get_json()
+    print("Received JSON night color: ", color)
+    if color == None:
+        return "ERROR", 400
+    color_tuple = (color["color_r"], color["color_g"], color["color_b"])
+    clk.store_night_color(color_tuple)
+    return "Night color stored", 200
+
+
+@app.route("/night_mode", methods=["GET"])
+def night_mode_get():
+    return jsonify({"night": clk.is_night_mode()}), 200
+
+
+@app.route("/night_mode", methods=["PUT"])
+def night_mode_put():
+    print(request.get_data())
+    body = request.get_json(silent=True)
+    print("Received JSON night mode: ", body)
+    if not isinstance(body, dict) or not isinstance(body.get("night"), bool):
+        return "ERROR: expected {\"night\": true|false}", 400
+    clk.set_night_mode(body["night"])
+    return "Night mode set", 200
+
 @app.route("/update_style", methods=["POST"])
 def update_style_post():
     print(request.get_data())

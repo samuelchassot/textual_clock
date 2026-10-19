@@ -137,14 +137,18 @@ class Clock:
         self.time_provider = time_provider
         self.CURRENT_COLOR_FILE_PATH = os.path.join(RES_DIR, "color.current")
         self.UPDATE_STYLE_FILE_PATH = os.path.join(RES_DIR, "update_style.current")
+        self.NIGHT_MODE_FILE_PATH = os.path.join(RES_DIR, "night_mode.current")
+        self.NIGHT_COLOR_FILE_PATH = os.path.join(RES_DIR, "night_color.current")
         self.SEPARATOR = ";"
         self.DEFAULT_COLOR = (255, 255, 255)
+        self.DEFAULT_NIGHT_COLOR = (0, 0, 0)
 
         self.display = display
 
         self.color_off = (0, 0, 0)
         self.color_on = self.DEFAULT_COLOR
         self._current_style = self.read_current_update_style()
+        self._night_mode = self.read_night_mode()
 
         self.last_h_five_min_residual_minutes_color: tuple[int, int, int, tuple[int, int, int]] = (
             0,
@@ -246,6 +250,54 @@ class Clock:
         except Exception as e:
             print("WARNING: cannot read the current color! Using default color.\n", e)
             return self.DEFAULT_COLOR
+
+    def store_night_color(self, color: tuple[int, int, int]) -> None:
+        try:
+            write_file_atomic(
+                self.NIGHT_COLOR_FILE_PATH,
+                f"{color[0]}{self.SEPARATOR}{color[1]}{self.SEPARATOR}{color[2]}",
+            )
+        except Exception as e:
+            print("ERROR: cannot write night color to file!\n", e)
+        self._force_reload = True
+
+    def read_night_color(self) -> tuple[int, int, int]:
+        try:
+            with open(self.NIGHT_COLOR_FILE_PATH, "r") as f:
+                l = f.readline()
+                rgb = l.split(self.SEPARATOR)
+                return (int(rgb[0]), int(rgb[1]), int(rgb[2]))
+        except Exception as e:
+            print("WARNING: cannot read the night color! Using default night color.\n", e)
+            return self.DEFAULT_NIGHT_COLOR
+
+    def set_night_mode(self, night: bool) -> None:
+        self._night_mode = night
+        try:
+            write_file_atomic(self.NIGHT_MODE_FILE_PATH, "true" if night else "false")
+        except Exception as e:
+            print("ERROR: cannot write night mode to file!\n", e)
+        self._force_reload = True
+
+    def is_night_mode(self) -> bool:
+        return self._night_mode
+
+    def read_night_mode(self) -> bool:
+        try:
+            with open(self.NIGHT_MODE_FILE_PATH, "r") as f:
+                value = f.readline().strip()
+                if value not in ("true", "false"):
+                    raise ValueError(f"Unknown night mode value: {value!r}")
+                return value == "true"
+        except Exception as e:
+            print("WARNING: cannot read night mode! Using day mode.\n", e)
+            return False
+
+    def _active_color(self) -> tuple[int, int, int]:
+        """Color to draw with: the night color in night mode, the day color otherwise."""
+        if self._night_mode:
+            return self.read_night_color()
+        return self.read_current_color()
     
     def update_current_update_style(self, update_style_str: str):
         try:
@@ -401,7 +453,7 @@ class Clock:
         # Because we show "25 to 10" for 9:35 for example
         if five_minutes > 6:
             h += 1
-        self.color_on = self.read_current_color()
+        self.color_on = self._active_color()
         assert(residual_minutes >= 0 and residual_minutes < 5)
 
         old_tuple = self.last_h_five_min_residual_minutes_color
@@ -552,7 +604,7 @@ class Clock:
         eff_hour = (hour + 1) % 24 if disp_min >= 35 else hour
         five_minutes = disp_min // 5
 
-        self.color_on = self.read_current_color()
+        self.color_on = self._active_color()
 
         old_tuple = self.last_h_five_min_residual_minutes_color
         self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
@@ -763,7 +815,7 @@ class Clock:
         eff_hour = (hour + 1) % 24 if disp_min >= 35 else hour
         five_minutes = disp_min // 5
 
-        self.color_on = self.read_current_color()
+        self.color_on = self._active_color()
 
         old_tuple = self.last_h_five_min_residual_minutes_color
         self.last_h_five_min_residual_minutes_color = (eff_hour, five_minutes, corner_leds, self.color_on)
